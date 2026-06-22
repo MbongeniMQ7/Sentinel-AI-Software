@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils'
 import { useAuth, type Role } from '@/lib/auth'
 import { useTheme } from '@/lib/theme'
 import { navConfig, roleMeta, type NavGroup } from '@/lib/nav'
+import { useAlerts } from '@/lib/api'
 import { Avatar } from '@/components/ui/Avatar'
 import { logoUrl } from '@/components/shared/Logo'
 import { Button } from '@/components/ui/Button'
@@ -82,9 +83,11 @@ export function AppShell({ role }: AppShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const { user, logout } = useAuth()
   const { theme, toggle } = useTheme()
+  const { data: alerts } = useAlerts()
   const navigate = useNavigate()
   const meta = roleMeta[role]
   const groups = navConfig[role]
+  const notifications = alerts.filter((a) => a.status !== 'resolved').slice(0, 5)
 
   const handleLogout = async () => {
     await logout()
@@ -182,7 +185,9 @@ export function AppShell({ role }: AppShellProps) {
               trigger={
                 <Button variant="ghost" size="icon" className="relative" aria-label="Notifications">
                   <Bell className="h-[18px] w-[18px]" />
-                  <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-rose-500 ring-2 ring-surface" />
+                  {notifications.length > 0 && (
+                    <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-rose-500 ring-2 ring-surface" />
+                  )}
                 </Button>
               }
               className="w-80"
@@ -191,20 +196,29 @@ export function AppShell({ role }: AppShellProps) {
                 <p className="text-sm font-semibold text-ink">Notifications</p>
               </div>
               <DropdownDivider />
-              {[
-                { t: 'Critical fatigue alert', d: 'Marcus Cole · Zone 3', time: '2m' },
-                { t: 'Break request approved', d: 'Your 15m break starts now', time: '12m' },
-                { t: 'New report ready', d: 'Weekly wellness summary', time: '1h' },
-              ].map((n) => (
-                <button key={n.t} className="flex w-full items-start gap-3 rounded-lg px-3 py-2 text-left hover:bg-surface-muted">
-                  <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-brand-500" />
-                  <span className="min-w-0">
-                    <span className="block text-sm font-medium text-ink">{n.t}</span>
-                    <span className="block truncate text-xs text-ink-muted">{n.d}</span>
-                  </span>
-                  <span className="ml-auto shrink-0 text-[11px] text-ink-subtle">{n.time}</span>
-                </button>
-              ))}
+              {notifications.length === 0 ? (
+                <p className="px-3 py-4 text-sm text-ink-subtle">You're all caught up.</p>
+              ) : (
+                notifications.map((n) => (
+                  <button key={n.id} className="flex w-full items-start gap-3 rounded-lg px-3 py-2 text-left hover:bg-surface-muted">
+                    <span
+                      className={cn(
+                        'mt-1 h-2 w-2 shrink-0 rounded-full',
+                        n.severity === 'critical' || n.severity === 'high'
+                          ? 'bg-rose-500'
+                          : n.severity === 'moderate'
+                            ? 'bg-amber-500'
+                            : 'bg-brand-500',
+                      )}
+                    />
+                    <span className="min-w-0">
+                      <span className="block text-sm font-medium text-ink">{n.message}</span>
+                      <span className="block truncate text-xs text-ink-muted">{n.employee} · {n.location}</span>
+                    </span>
+                    <span className="ml-auto shrink-0 text-[11px] text-ink-subtle">{n.timestamp}</span>
+                  </button>
+                ))
+              )}
             </Dropdown>
 
             <Dropdown
