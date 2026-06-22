@@ -109,7 +109,7 @@ Deno.serve(async (req: Request) => {
   // Role / company come from the account_roles mapping (defaults to employee).
   const { data: mapping } = await supabase
     .from('account_roles')
-    .select('role, company_id, full_name, title')
+    .select('role, company_id, full_name, title, phone, avatar_url')
     .eq('email', email)
     .maybeSingle()
 
@@ -126,6 +126,8 @@ Deno.serve(async (req: Request) => {
       company_id: companyId,
       full_name: fullName,
       title: mapping?.title ?? null,
+      phone: mapping?.phone ?? null,
+      avatar_url: mapping?.avatar_url ?? null,
       is_active: true,
       last_active_at: new Date().toISOString(),
     },
