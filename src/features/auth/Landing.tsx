@@ -1,38 +1,15 @@
 import { Link } from 'react-router-dom'
 import {
-  Activity,
   ArrowRight,
-  BarChart3,
-  Bell,
-  Camera,
   CheckCircle2,
-  Cpu,
-  HeartPulse,
   Play,
   ShieldCheck,
   Sparkles,
   Star,
-  Users,
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { logoUrl } from '@/components/shared/Logo'
-
-const features = [
-  { icon: Camera, title: 'Vision-based detection', desc: 'On-edge computer vision flags drowsiness, micro-sleeps and distraction in real time — without storing raw video.' },
-  { icon: HeartPulse, title: 'Biometric fusion', desc: 'Optional wearables add heart-rate variability for a richer, more accurate fatigue index.' },
-  { icon: Bell, title: 'Proactive alerts', desc: 'Escalation workflows notify operators and managers before fatigue becomes an incident.' },
-  { icon: BarChart3, title: 'Workforce analytics', desc: 'Department trends, shift comparisons and predictive risk scoring across your whole org.' },
-  { icon: Cpu, title: 'IoT fleet control', desc: 'Provision, monitor and update cameras, bands and gateways from a single console.' },
-  { icon: ShieldCheck, title: 'Privacy by design', desc: 'Anonymized metrics, encrypted pipelines and on-device processing keep people protected.' },
-]
-
-const stats = [
-  { value: '41%', label: 'Fewer fatigue incidents' },
-  { value: '2.3M', label: 'Shifts monitored' },
-  { value: '99.9%', label: 'Platform uptime' },
-  { value: '<200ms', label: 'Edge inference' },
-]
 
 export function Landing() {
   return (
@@ -45,8 +22,6 @@ export function Landing() {
             <span className="text-lg font-bold tracking-tight text-ink">SentinelAI</span>
           </div>
           <nav className="hidden items-center gap-8 text-sm font-medium text-ink-muted md:flex">
-            <a href="#features" className="hover:text-ink">Platform</a>
-            <a href="#stats" className="hover:text-ink">Impact</a>
             <a href="#cta" className="hover:text-ink">Pricing</a>
           </nav>
           <div className="flex items-center gap-2">
@@ -94,59 +69,6 @@ export function Landing() {
             </div>
             Trusted by safety teams at 120+ industrial sites
           </div>
-
-          {/* Hero preview */}
-          <div className="mx-auto mt-14 max-w-5xl">
-            <div className="card overflow-hidden p-2">
-              <div className="rounded-xl bg-surface-subtle p-4 sm:p-6">
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                  {[
-                    { icon: Activity, label: 'Avg fatigue', value: '38', tone: 'text-emerald-600' },
-                    { icon: Users, label: 'Active staff', value: '284', tone: 'text-brand-600' },
-                    { icon: Bell, label: 'Open alerts', value: '7', tone: 'text-amber-600' },
-                    { icon: HeartPulse, label: 'Avg BPM', value: '74', tone: 'text-rose-600' },
-                  ].map((s) => (
-                    <div key={s.label} className="rounded-xl border border-line bg-surface p-4 text-left">
-                      <s.icon className={`h-5 w-5 ${s.tone}`} />
-                      <p className="mt-3 text-2xl font-bold text-ink">{s.value}</p>
-                      <p className="text-xs text-ink-muted">{s.label}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Stats */}
-      <section id="stats" className="border-y border-line bg-surface">
-        <div className="mx-auto grid max-w-7xl grid-cols-2 gap-8 px-4 py-12 sm:px-6 lg:grid-cols-4">
-          {stats.map((s) => (
-            <div key={s.label} className="text-center">
-              <p className="text-3xl font-bold tracking-tight text-brand-600 sm:text-4xl">{s.value}</p>
-              <p className="mt-1 text-sm text-ink-muted">{s.label}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Features */}
-      <section id="features" className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:py-24">
-        <div className="mx-auto max-w-2xl text-center">
-          <h2 className="text-3xl font-bold tracking-tight text-ink sm:text-4xl">One platform for workforce wellness</h2>
-          <p className="mt-4 text-lg text-ink-muted">Everything safety and operations teams need to prevent fatigue-related incidents.</p>
-        </div>
-        <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {features.map((f) => (
-            <div key={f.title} className="card p-6">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-950/50">
-                <f.icon className="h-5 w-5" />
-              </div>
-              <h3 className="mt-4 text-base font-semibold text-ink">{f.title}</h3>
-              <p className="mt-2 text-sm text-ink-muted">{f.desc}</p>
-            </div>
-          ))}
         </div>
       </section>
 
