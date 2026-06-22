@@ -15,7 +15,8 @@
 //
 // Secrets (set with `supabase secrets set`):
 //   RESEND_API_KEY   — Resend API key (required)
-//   OTP_FROM_EMAIL   — verified sender, defaults to onboarding@resend.dev
+//   OTP_FROM_EMAIL   — verified sender, defaults to no-reply@mmqtech.co.za
+//   OTP_REPLY_TO     — monitored reply mailbox, defaults to support@mmqtech.co.za
 //   OTP_APP_NAME     — branding, defaults to "SentinelAI"
 //   INVITE_APP_URL   — sign-in URL, defaults to the production site
 //
@@ -117,6 +118,35 @@ function inviteEmailHtml(opts: {
   </table>
 </body>
 </html>`
+}
+
+function inviteEmailText(opts: {
+  appName: string
+  signInUrl: string
+  roleLabel: string
+  companyName: string | null
+  inviterName: string | null
+  invitee: string
+}): string {
+  const { appName, signInUrl, roleLabel, companyName, inviterName, invitee } = opts
+  const year = new Date().getFullYear()
+  const intro = inviterName
+    ? `${inviterName} has added you to ${appName}`
+    : `You've been added to ${appName}`
+  const scope = companyName ? `as a ${roleLabel} for ${companyName}` : `as a ${roleLabel}`
+  return [
+    `${appName} — You're invited`,
+    '',
+    `${intro} ${scope}.`,
+    '',
+    `Sign in with this email address — ${invitee} — and we'll send a one-time code to verify it's you. No password required.`,
+    '',
+    `Sign in: ${signInUrl}`,
+    '',
+    `If you weren't expecting this invitation, you can safely ignore this email.`,
+    '',
+    `© ${year} ${appName} · Workforce Fatigue & Wellness Platform`,
+  ].join('\n')
 }
 
 Deno.serve(async (req: Request) => {
@@ -226,7 +256,8 @@ Deno.serve(async (req: Request) => {
 
   // ---- Send the invitation email via Resend --------------------------------
   const appName = Deno.env.get('OTP_APP_NAME') ?? 'SentinelAI'
-  const fromEmail = Deno.env.get('OTP_FROM_EMAIL') ?? 'onboarding@resend.dev'
+  const fromEmail = Deno.env.get('OTP_FROM_EMAIL') ?? 'no-reply@mmqtech.co.za'
+  const replyTo = Deno.env.get('OTP_REPLY_TO') ?? 'support@mmqtech.co.za'
   const signInUrl = Deno.env.get('INVITE_APP_URL') ?? 'https://sentinel-ai-software.vercel.app'
   const logoUrl =
     Deno.env.get('OTP_LOGO_URL') ??
@@ -240,6 +271,7 @@ Deno.serve(async (req: Request) => {
     },
     body: JSON.stringify({
       from: `${appName} <${fromEmail}>`,
+      reply_to: replyTo,
       to: [email],
       subject: companyName
         ? `You've been added to ${companyName} on ${appName}`
@@ -247,6 +279,14 @@ Deno.serve(async (req: Request) => {
       html: inviteEmailHtml({
         appName,
         logoUrl,
+        signInUrl,
+        roleLabel: ROLE_LABELS[role],
+        companyName,
+        inviterName: caller.full_name ?? null,
+        invitee: email,
+      }),
+      text: inviteEmailText({
+        appName,
         signInUrl,
         roleLabel: ROLE_LABELS[role],
         companyName,
