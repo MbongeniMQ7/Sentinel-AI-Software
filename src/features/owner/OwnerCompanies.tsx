@@ -11,7 +11,7 @@ import { EmptyState } from '@/components/shared/States'
 import { StatusBadge } from '@/components/shared/Badges'
 import { KpiCard } from '@/components/shared/KpiCard'
 import { TrendArea } from '@/components/shared/Charts'
-import { useCompanies, useRevenueTrend, type Company } from '@/lib/api'
+import { useCompanies, useRevenueTrend, createCompany, type Company } from '@/lib/api'
 import { formatCurrency } from '@/lib/utils'
 
 const planTones = { Starter: 'info', Growth: 'brand', Enterprise: 'purple' } as const
@@ -20,8 +20,34 @@ export function OwnerCompanies() {
   const [query, setQuery] = useState('')
   const [plan, setPlan] = useState('all')
   const [selected, setSelected] = useState<Company | null>(null)
-  const { data: companies } = useCompanies()
+  const { data: companies, refetch } = useCompanies()
   const { data: revenueTrend } = useRevenueTrend()
+
+  const [addOpen, setAddOpen] = useState(false)
+  const [form, setForm] = useState({ name: '', industry: '', plan: 'Starter', seats: '10', status: 'trial' })
+  const [saving, setSaving] = useState(false)
+  const [addError, setAddError] = useState<string | null>(null)
+
+  const submitCompany = async () => {
+    setSaving(true)
+    setAddError(null)
+    try {
+      await createCompany({
+        name: form.name,
+        industry: form.industry,
+        plan: form.plan as Company['plan'],
+        seats: Number(form.seats) || 0,
+        status: form.status as 'active' | 'trial',
+      })
+      setAddOpen(false)
+      setForm({ name: '', industry: '', plan: 'Starter', seats: '10', status: 'trial' })
+      refetch()
+    } catch (err) {
+      setAddError(err instanceof Error ? err.message : 'Could not create company')
+    } finally {
+      setSaving(false)
+    }
+  }
 
   const filtered = useMemo(
     () => companies.filter((c) => (plan === 'all' || c.plan === plan) && (!query || c.name.toLowerCase().includes(query.toLowerCase()))),
@@ -33,7 +59,7 @@ export function OwnerCompanies() {
       <PageHeader
         title="Company Management"
         description="All organizations using SentinelAI."
-        actions={<Button size="sm"><Plus className="h-4 w-4" /> Add company</Button>}
+        actions={<Button size="sm" onClick={() => setAddOpen(true)}><Plus className="h-4 w-4" /> Add company</Button>}
       />
 
       <div className="mb-5 grid gap-4 sm:grid-cols-4">
@@ -106,6 +132,51 @@ export function OwnerCompanies() {
             </div>
           </div>
         )}
+      </Drawer>
+
+      <Drawer
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        title="Add company"
+        subtitle="Create a new organization on SentinelAI."
+        width="md"
+        footer={
+          <>
+            <Button variant="outline" className="flex-1" onClick={() => setAddOpen(false)}>Cancel</Button>
+            <Button className="flex-1" loading={saving} disabled={!form.name.trim()} onClick={submitCompany}>Create company</Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-ink">Company name</label>
+            <Input placeholder="Acme Manufacturing" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-ink">Industry</label>
+            <Input placeholder="Manufacturing" value={form.industry} onChange={(e) => setForm({ ...form, industry: e.target.value })} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-ink">Plan</label>
+              <Select value={form.plan} onChange={(e) => setForm({ ...form, plan: e.target.value })}>
+                <option>Starter</option><option>Growth</option><option>Enterprise</option>
+              </Select>
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-ink">Seats</label>
+              <Input type="number" min={0} value={form.seats} onChange={(e) => setForm({ ...form, seats: e.target.value })} />
+            </div>
+          </div>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-ink">Status</label>
+            <Select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
+              <option value="trial">Trial</option>
+              <option value="active">Active</option>
+            </Select>
+          </div>
+          {addError && <p className="text-sm text-rose-600">{addError}</p>}
+        </div>
       </Drawer>
     </div>
   )
