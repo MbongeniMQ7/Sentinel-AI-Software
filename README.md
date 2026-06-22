@@ -1,6 +1,8 @@
 # SentinelAI — Workforce Fatigue & Wellness Platform (MVP Frontend)
 
-An enterprise-grade, frontend-only MVP for **SentinelAI**, an AI-powered workforce fatigue and wellness platform. Built with a consistent SaaS design system across three role-based experiences: **Employee**, **Manager**, and **Owner**.
+An AI-powered fatigue and biometric risk monitoring system built for the world's most demanding work environments. It continuously fuses computer vision, IoT telemetry, and physiological signals to score every worker's risk — in real time, at industrial scale.
+
+This repository contains the enterprise-grade, frontend-only MVP. Built with a consistent SaaS design system across three role-based experiences: **Employee**, **Manager**, and **Owner**.
 
 > Frontend only. All data is mocked/simulated — there is no backend.
 
@@ -58,3 +60,4 @@ src/
     owner/     # owner screens
   lib/         # auth, theme, nav config, mock data, utils
 ```
+
