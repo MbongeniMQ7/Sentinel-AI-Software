@@ -5,3 +5,8 @@ verify_jwt = false
 
 [functions.verify-otp]
 verify_jwt = false
+
+# Invites require an authenticated owner/manager; the function additionally
+# verifies the caller's role before provisioning the account.
+[functions.send-invite]
+verify_jwt = true

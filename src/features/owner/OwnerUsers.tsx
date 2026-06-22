@@ -37,6 +37,8 @@ export function OwnerUsers() {
 
   // Invite form
   const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteName, setInviteName] = useState('')
+  const [invitePhone, setInvitePhone] = useState('')
   const [inviteRole, setInviteRole] = useState<'employee' | 'manager' | 'owner'>('employee')
   const [inviteCompany, setInviteCompany] = useState('')
   const [sending, setSending] = useState(false)
@@ -59,9 +61,13 @@ export function OwnerUsers() {
         email: inviteEmail,
         role: inviteRole,
         invitedBy: user.id,
+        fullName: inviteName,
+        phone: invitePhone,
       })
-      setInviteMsg(`Invitation created for ${inviteEmail}.`)
+      setInviteMsg(`Invitation sent to ${inviteEmail}.`)
       setInviteEmail('')
+      setInviteName('')
+      setInvitePhone('')
     } catch (e) {
       setInviteErr(e instanceof Error ? e.message : 'Could not create invite')
     } finally {
@@ -162,8 +168,10 @@ export function OwnerUsers() {
         <div className="space-y-4">
           {inviteErr && <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-600 dark:bg-rose-950/40">{inviteErr}</p>}
           {inviteMsg && <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-600 dark:bg-emerald-950/40">{inviteMsg}</p>}
+          <Field label="Full name"><Input placeholder="Jordan Blake" value={inviteName} onChange={(e) => setInviteName(e.target.value)} /></Field>
           <Field label="Email" required><Input type="email" placeholder="name@company.com" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} /></Field>
-          <Field label="Role" required><Select value={inviteRole} onChange={(e) => setInviteRole(e.target.value as 'employee' | 'manager' | 'owner')}><option value="employee">Employee</option><option value="manager">Manager</option><option value="owner">Owner</option></Select></Field>
+          <Field label="Phone"><Input placeholder="+1 (555) 0000" value={invitePhone} onChange={(e) => setInvitePhone(e.target.value)} /></Field>
+          <Field label="Role" required><Select value={inviteRole} onChange={(e) => setInviteRole(e.target.value as 'employee' | 'manager' | 'owner')}><option value="employee">Employee</option><option value="manager">Manager / Admin</option><option value="owner">Owner</option></Select></Field>
           <Field label="Company"><Select value={inviteCompany} onChange={(e) => setInviteCompany(e.target.value)}>{companies.map((c) => <option key={c.id}>{c.name}</option>)}</Select></Field>
         </div>
       </Modal>

@@ -770,23 +770,44 @@ export async function reassignDevice(id: string, assignedTo: string | null): Pro
   unwrap(error)
 }
 
-/** Manager/owner invites a user to join a company. */
+/** Owner/manager invites a user — provisions their role and emails them.
+ *  Runs through the `send-invite` edge function (service-role provisioning +
+ *  Resend email) so the invitee can sign in with OTP and land in the right
+ *  role/company with their contact details already set. */
 export async function inviteUser(input: {
   companyId: string | null
   email: string
   role: 'employee' | 'manager' | 'owner'
   invitedBy: string
+  fullName?: string
+  title?: string
+  phone?: string
+  avatarUrl?: string
 }): Promise<void> {
-  const token =
-    typeof crypto !== 'undefined' && 'randomUUID' in crypto
-      ? crypto.randomUUID()
-      : Math.random().toString(36).slice(2) + Date.now().toString(36)
-  const { error } = await supabase.from('invites').insert({
-    company_id: input.companyId,
-    email: input.email,
-    role: input.role,
-    invited_by: input.invitedBy,
-    token,
+  const { data, error } = await supabase.functions.invoke('send-invite', {
+    body: {
+      email: input.email,
+      role: input.role,
+      companyId: input.companyId,
+      fullName: input.fullName,
+      title: input.title,
+      phone: input.phone,
+      avatarUrl: input.avatarUrl,
+    },
   })
-  unwrap(error)
+  if (error) {
+    // Surface the function's JSON error message when available.
+    let message = error.message
+    const ctx = (error as { context?: Response }).context
+    if (ctx && typeof ctx.json === 'function') {
+      try {
+        const body = await ctx.json()
+        if (body?.error) message = body.error
+      } catch {
+        /* ignore parse errors */
+      }
+    }
+    throw new Error(message)
+  }
+  if (data && data.success === false) throw new Error(data.error ?? 'Could not send invite')
 }

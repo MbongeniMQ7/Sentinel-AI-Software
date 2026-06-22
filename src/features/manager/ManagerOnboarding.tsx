@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/Button'
 import { Field, Input, Select } from '@/components/ui/Input'
 import { Switch } from '@/components/ui/Switch'
 import { Badge } from '@/components/ui/Badge'
-import { useDevices } from '@/lib/api'
+import { useDevices, inviteUser } from '@/lib/api'
+import { useAuth } from '@/lib/auth'
 import { cn } from '@/lib/utils'
 
 const steps = [
@@ -20,9 +21,56 @@ export function ManagerOnboarding() {
   const [done, setDone] = useState(false)
   const [selectedDevices, setSelectedDevices] = useState<string[]>([])
   const { data: devices } = useDevices()
+  const { user } = useAuth()
+
+  // Personal details
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [jobTitle, setJobTitle] = useState('Line Operator')
+  const [phone, setPhone] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const toggleDevice = (id: string) => setSelectedDevices((p) => (p.includes(id) ? p.filter((d) => d !== id) : [...p, id]))
   const available = devices.filter((d) => !d.assignedTo).slice(0, 6)
+
+  const complete = async () => {
+    if (!user) return
+    if (!name.trim() || !email.trim()) {
+      setError('Full name and email are required.')
+      setStep(1)
+      return
+    }
+    setSaving(true)
+    setError(null)
+    try {
+      await inviteUser({
+        companyId: user.companyId,
+        email,
+        role: 'employee',
+        invitedBy: user.id,
+        fullName: name,
+        title: jobTitle,
+        phone,
+      })
+      setDone(true)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not onboard the employee')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const reset = () => {
+    setDone(false)
+    setStep(1)
+    setSelectedDevices([])
+    setName('')
+    setEmail('')
+    setJobTitle('Line Operator')
+    setPhone('')
+    setError(null)
+  }
 
   if (done) {
     return (
@@ -32,8 +80,8 @@ export function ManagerOnboarding() {
           <CardBody className="flex flex-col items-center py-12 text-center">
             <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40"><Check className="h-7 w-7" /></span>
             <h3 className="mt-5 text-lg font-semibold text-ink">Employee onboarded</h3>
-            <p className="mt-1 text-sm text-ink-muted">Jordan Blake has been added with {selectedDevices.length} device(s) assigned.</p>
-            <Button className="mt-6" onClick={() => { setDone(false); setStep(1); setSelectedDevices([]) }}>Onboard another</Button>
+            <p className="mt-1 text-sm text-ink-muted">{name || 'The new hire'} has been invited with {selectedDevices.length} device(s) assigned. They'll get an email to sign in.</p>
+            <Button className="mt-6" onClick={reset}>Onboard another</Button>
           </CardBody>
         </Card>
       </div>
@@ -63,14 +111,15 @@ export function ManagerOnboarding() {
         <Card>
           <CardHeader title={steps[step - 1].label} icon={<UserPlus className="h-4 w-4" />} />
           <CardBody>
+            {error && <p className="mb-4 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-600 dark:bg-rose-950/40">{error}</p>}
             {step === 1 && (
               <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Full name" required><Input placeholder="Jordan Blake" /></Field>
-                <Field label="Email" required><Input type="email" placeholder="jordan.blake@sentinel.ai" /></Field>
-                <Field label="Role" required><Select><option>Line Operator</option><option>Forklift Driver</option><option>Technician</option><option>QA Inspector</option></Select></Field>
+                <Field label="Full name" required><Input placeholder="Jordan Blake" value={name} onChange={(e) => setName(e.target.value)} /></Field>
+                <Field label="Email" required><Input type="email" placeholder="jordan.blake@sentinel.ai" value={email} onChange={(e) => setEmail(e.target.value)} /></Field>
+                <Field label="Role" required><Select value={jobTitle} onChange={(e) => setJobTitle(e.target.value)}><option>Line Operator</option><option>Forklift Driver</option><option>Technician</option><option>QA Inspector</option></Select></Field>
                 <Field label="Department" required><Select><option>Operations</option><option>Logistics</option><option>Assembly</option><option>Quality</option></Select></Field>
                 <Field label="Shift"><Select><option>Morning</option><option>Evening</option><option>Night</option></Select></Field>
-                <Field label="Phone"><Input placeholder="+1 (555) 0000" /></Field>
+                <Field label="Phone"><Input placeholder="+1 (555) 0000" value={phone} onChange={(e) => setPhone(e.target.value)} /></Field>
               </div>
             )}
             {step === 2 && (
@@ -95,17 +144,17 @@ export function ManagerOnboarding() {
                 </div>
                 <div className="rounded-xl bg-surface-subtle p-4 text-sm">
                   <p className="font-medium text-ink">Summary</p>
-                  <div className="mt-2 flex flex-wrap gap-2"><Badge tone="brand">Jordan Blake</Badge><Badge tone="neutral">{selectedDevices.length} devices</Badge><Badge tone="success">Hybrid monitoring</Badge></div>
+                  <div className="mt-2 flex flex-wrap gap-2"><Badge tone="brand">{name || 'New hire'}</Badge><Badge tone="neutral">{selectedDevices.length} devices</Badge><Badge tone="success">Hybrid monitoring</Badge></div>
                 </div>
               </div>
             )}
           </CardBody>
           <CardFooter className="justify-between">
-            <Button variant="outline" disabled={step === 1} onClick={() => setStep((s) => s - 1)}><ChevronLeft className="h-4 w-4" /> Back</Button>
+            <Button variant="outline" disabled={step === 1 || saving} onClick={() => setStep((s) => s - 1)}><ChevronLeft className="h-4 w-4" /> Back</Button>
             {step < 3 ? (
               <Button onClick={() => setStep((s) => s + 1)}>Continue <ChevronRight className="h-4 w-4" /></Button>
             ) : (
-              <Button onClick={() => setDone(true)}><Check className="h-4 w-4" /> Complete onboarding</Button>
+              <Button onClick={complete} disabled={saving}><Check className="h-4 w-4" /> {saving ? 'Onboarding…' : 'Complete onboarding'}</Button>
             )}
           </CardFooter>
         </Card>
