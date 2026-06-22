@@ -128,6 +128,23 @@ Deno.serve(async (req: Request) => {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
   )
 
+  // ---- Authorization: only pre-registered accounts may sign in -------------
+  // An email can only receive a code if an owner/admin invited it first
+  // (i.e. it exists in account_roles). This blocks unknown emails entirely.
+  const { data: account, error: accountErr } = await supabase
+    .from('account_roles')
+    .select('email')
+    .eq('email', email)
+    .maybeSingle()
+
+  if (accountErr) return jsonResponse({ error: 'Could not process request' }, 500)
+  if (!account) {
+    return jsonResponse(
+      { error: "This email isn't registered. Ask your administrator to invite you first." },
+      403,
+    )
+  }
+
   // ---- Rate limiting -------------------------------------------------------
   const { data: recent, error: recentErr } = await supabase
     .from('otp_codes')
