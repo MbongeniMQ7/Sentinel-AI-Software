@@ -9,7 +9,8 @@ import { DataTable, type Column } from '@/components/ui/DataTable'
 import { Badge } from '@/components/ui/Badge'
 import { StatusBadge } from '@/components/shared/Badges'
 import { KpiCard } from '@/components/shared/KpiCard'
-import { useLeaveRequests, type LeaveRequest } from '@/lib/api'
+import { useLeaveRequests, submitLeaveRequest, type LeaveRequest } from '@/lib/api'
+import { useAuth } from '@/lib/auth'
 import { cn } from '@/lib/utils'
 
 const columns: Column<LeaveRequest>[] = [
@@ -26,8 +27,53 @@ const leaveDays = new Set([8, 9, 10, 18, 22, 23])
 
 export function EmployeeLeave() {
   const [open, setOpen] = useState(false)
-  const { data: leaveRequests } = useLeaveRequests()
+  const { user } = useAuth()
+  const { data: leaveRequests, refetch } = useLeaveRequests()
+  const [type, setType] = useState('Annual')
+  const [from, setFrom] = useState('')
+  const [to, setTo] = useState('')
+  const [reason, setReason] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const cells = Array.from({ length: 35 }, (_, i) => i - 2) // offset start
+
+  const reset = () => {
+    setType('Annual')
+    setFrom('')
+    setTo('')
+    setReason('')
+    setError(null)
+  }
+
+  const submit = async () => {
+    if (!user?.companyId) {
+      setError('Your account is not linked to a company.')
+      return
+    }
+    if (!from || !to) {
+      setError('Please choose both start and end dates.')
+      return
+    }
+    setSubmitting(true)
+    setError(null)
+    try {
+      await submitLeaveRequest({
+        employeeId: user.id,
+        companyId: user.companyId,
+        type,
+        startDate: from,
+        endDate: to,
+        reason,
+      })
+      setOpen(false)
+      reset()
+      refetch()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not submit request')
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   return (
     <div>
@@ -103,14 +149,15 @@ export function EmployeeLeave() {
         description="Submit a new time-off request for approval."
         footer={
           <>
-            <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button onClick={() => setOpen(false)}>Submit request</Button>
+            <Button variant="outline" onClick={() => setOpen(false)} disabled={submitting}>Cancel</Button>
+            <Button onClick={submit} disabled={submitting}>{submitting ? 'Submitting…' : 'Submit request'}</Button>
           </>
         }
       >
         <div className="space-y-4">
+          {error && <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-600 dark:bg-rose-950/40">{error}</p>}
           <Field label="Leave type" required>
-            <Select defaultValue="Annual">
+            <Select value={type} onChange={(e) => setType(e.target.value)}>
               <option>Annual</option>
               <option>Sick</option>
               <option>Personal</option>
@@ -119,14 +166,14 @@ export function EmployeeLeave() {
           </Field>
           <div className="grid grid-cols-2 gap-3">
             <Field label="From" required>
-              <Input type="date" />
+              <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
             </Field>
             <Field label="To" required>
-              <Input type="date" />
+              <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
             </Field>
           </div>
           <Field label="Reason">
-            <Textarea rows={3} placeholder="Briefly describe your reason…" />
+            <Textarea rows={3} placeholder="Briefly describe your reason…" value={reason} onChange={(e) => setReason(e.target.value)} />
           </Field>
         </div>
       </Modal>

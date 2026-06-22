@@ -13,16 +13,29 @@ import { EmptyState } from '@/components/shared/States'
 import { KpiCard } from '@/components/shared/KpiCard'
 import { RiskBadge, AlertStatusBadge } from '@/components/shared/Badges'
 import { BarSeries } from '@/components/shared/Charts'
-import { useAlerts, useEmployees, useWeeklyAlerts, type AlertItem } from '@/lib/api'
+import { useAlerts, useEmployees, useWeeklyAlerts, updateAlertStatus, type AlertItem } from '@/lib/api'
 
 export function ManagerAlerts() {
   const [tab, setTab] = useState('feed')
   const [query, setQuery] = useState('')
   const [sev, setSev] = useState('all')
   const [selected, setSelected] = useState<AlertItem | null>(null)
-  const { data: alerts } = useAlerts()
+  const { data: alerts, refetch } = useAlerts()
   const { data: employees } = useEmployees()
   const { data: weeklyAlerts } = useWeeklyAlerts()
+  const [busy, setBusy] = useState(false)
+
+  const transition = async (status: 'escalated' | 'resolved') => {
+    if (!selected) return
+    setBusy(true)
+    try {
+      await updateAlertStatus(selected.id, status)
+      setSelected(null)
+      refetch()
+    } finally {
+      setBusy(false)
+    }
+  }
 
   const filtered = useMemo(
     () => alerts.filter((a) => (sev === 'all' || a.severity === sev) && (!query || a.employee.toLowerCase().includes(query.toLowerCase()) || a.message.toLowerCase().includes(query.toLowerCase()))),
@@ -124,8 +137,8 @@ export function ManagerAlerts() {
         subtitle={selected ? `${selected.id} · ${selected.location}` : ''}
         footer={
           <>
-            <Button variant="danger" className="flex-1"><ArrowUpRight className="h-4 w-4" /> Escalate</Button>
-            <Button className="flex-1"><CheckCircle2 className="h-4 w-4" /> Resolve</Button>
+            <Button variant="danger" className="flex-1" disabled={busy || selected?.status === 'escalated' || selected?.status === 'resolved'} onClick={() => transition('escalated')}><ArrowUpRight className="h-4 w-4" /> Escalate</Button>
+            <Button className="flex-1" disabled={busy || selected?.status === 'resolved'} onClick={() => transition('resolved')}><CheckCircle2 className="h-4 w-4" /> Resolve</Button>
           </>
         }
       >

@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/Badge'
 import { EmptyState } from '@/components/shared/States'
 import { RiskBadge, AlertStatusBadge } from '@/components/shared/Badges'
 import { KpiCard } from '@/components/shared/KpiCard'
-import { useAlerts, type AlertItem } from '@/lib/api'
+import { useAlerts, acknowledgeAlert, type AlertItem } from '@/lib/api'
 
 const tabs = [
   { id: 'all', label: 'All' },
@@ -24,7 +24,20 @@ export function EmployeeAlerts() {
   const [query, setQuery] = useState('')
   const [severity, setSeverity] = useState('all')
   const [selected, setSelected] = useState<AlertItem | null>(null)
-  const { data: alerts } = useAlerts()
+  const { data: alerts, refetch } = useAlerts()
+  const [acking, setAcking] = useState(false)
+
+  const acknowledge = async () => {
+    if (!selected) return
+    setAcking(true)
+    try {
+      await acknowledgeAlert(selected.id)
+      setSelected(null)
+      refetch()
+    } finally {
+      setAcking(false)
+    }
+  }
 
   const filtered = useMemo(
     () =>
@@ -111,7 +124,9 @@ export function EmployeeAlerts() {
         footer={
           <>
             <Button variant="outline" className="flex-1" onClick={() => setSelected(null)}>Dismiss</Button>
-            <Button className="flex-1">Acknowledge</Button>
+            <Button className="flex-1" onClick={acknowledge} disabled={acking || selected?.status === 'acknowledged' || selected?.status === 'resolved'}>
+              {acking ? 'Saving…' : selected?.status === 'acknowledged' ? 'Acknowledged' : 'Acknowledge'}
+            </Button>
           </>
         }
       >

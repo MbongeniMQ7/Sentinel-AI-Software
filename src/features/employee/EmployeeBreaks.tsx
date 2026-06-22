@@ -7,7 +7,8 @@ import { Modal } from '@/components/ui/Modal'
 import { Field, Select, Textarea } from '@/components/ui/Input'
 import { DataTable, type Column } from '@/components/ui/DataTable'
 import { StatusBadge } from '@/components/shared/Badges'
-import { useBreakRequests, type BreakRequest } from '@/lib/api'
+import { useBreakRequests, submitBreakRequest, type BreakRequest } from '@/lib/api'
+import { useAuth } from '@/lib/auth'
 
 const columns: Column<BreakRequest>[] = [
   { key: 'id', header: 'ID', render: (r) => <span className="font-mono text-xs text-ink-muted">{r.id}</span> },
@@ -21,7 +22,37 @@ export function EmployeeBreaks() {
   const [open, setOpen] = useState(false)
   const [running, setRunning] = useState(false)
   const [seconds, setSeconds] = useState(15 * 60)
-  const { data: breakRequests } = useBreakRequests()
+  const { user } = useAuth()
+  const { data: breakRequests, refetch } = useBreakRequests()
+  const [reason, setReason] = useState('Fatigue recovery')
+  const [duration, setDuration] = useState('15')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const submit = async () => {
+    if (!user?.companyId) {
+      setError('Your account is not linked to a company.')
+      return
+    }
+    setSubmitting(true)
+    setError(null)
+    try {
+      await submitBreakRequest({
+        employeeId: user.id,
+        companyId: user.companyId,
+        reason,
+        durationMin: Number(duration),
+      })
+      setOpen(false)
+      setReason('Fatigue recovery')
+      setDuration('15')
+      refetch()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not submit request')
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   useEffect(() => {
     if (!running) return
@@ -131,14 +162,15 @@ export function EmployeeBreaks() {
         description="Your manager will be notified instantly."
         footer={
           <>
-            <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button onClick={() => setOpen(false)}>Submit request</Button>
+            <Button variant="outline" onClick={() => setOpen(false)} disabled={submitting}>Cancel</Button>
+            <Button onClick={submit} disabled={submitting}>{submitting ? 'Submitting…' : 'Submit request'}</Button>
           </>
         }
       >
         <div className="space-y-4">
+          {error && <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-600 dark:bg-rose-950/40">{error}</p>}
           <Field label="Break reason" required>
-            <Select defaultValue="Fatigue recovery">
+            <Select value={reason} onChange={(e) => setReason(e.target.value)}>
               <option>Fatigue recovery</option>
               <option>Meal break</option>
               <option>Rest period</option>
@@ -147,7 +179,7 @@ export function EmployeeBreaks() {
             </Select>
           </Field>
           <Field label="Duration" required>
-            <Select defaultValue="15">
+            <Select value={duration} onChange={(e) => setDuration(e.target.value)}>
               <option value="5">5 minutes</option>
               <option value="10">10 minutes</option>
               <option value="15">15 minutes</option>
