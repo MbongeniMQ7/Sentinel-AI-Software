@@ -7,12 +7,13 @@ import { Badge } from '@/components/ui/Badge'
 import { KpiCard } from '@/components/shared/KpiCard'
 import { TrendArea, Donut, BarSeries } from '@/components/shared/Charts'
 import { StatusBadge } from '@/components/shared/Badges'
-import { useCompanies, useRevenueTrend } from '@/lib/api'
+import { useCompanies, useRevenueTrend, useWeeklyAlerts } from '@/lib/api'
 import { formatCompact, formatCurrency } from '@/lib/utils'
 
 export function OwnerDashboard() {
   const { data: companies } = useCompanies()
   const { data: revenueTrend } = useRevenueTrend()
+  const { data: weeklyAlerts } = useWeeklyAlerts()
   const totalMrr = companies.reduce((s, c) => s + c.mrr, 0)
   const totalUsers = companies.reduce((s, c) => s + c.activeUsers, 0)
   const totalDevices = companies.reduce((s, c) => s + c.devices, 0)
@@ -22,8 +23,6 @@ export function OwnerDashboard() {
     { name: 'Growth', value: companies.filter((c) => c.plan === 'Growth').length, color: '#3563ff' },
     { name: 'Enterprise', value: companies.filter((c) => c.plan === 'Enterprise').length, color: '#8b5cf6' },
   ]
-
-  const usage = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d, i) => ({ day: d, sessions: 1200 + ((i * 340) % 900) }))
 
   return (
     <div>
@@ -39,10 +38,10 @@ export function OwnerDashboard() {
       />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard label="MRR" value={formatCurrency(totalMrr)} icon={<DollarSign className="h-5 w-5" />} tone="success" delta={12} hint="Recurring revenue" />
-        <KpiCard label="Active companies" value={companies.filter((c) => c.status === 'active').length} icon={<Building2 className="h-5 w-5" />} tone="brand" delta={3} />
-        <KpiCard label="Total users" value={formatCompact(totalUsers)} icon={<Users className="h-5 w-5" />} tone="info" delta={8} />
-        <KpiCard label="Devices deployed" value={formatCompact(totalDevices)} icon={<Cpu className="h-5 w-5" />} tone="purple" delta={5} />
+        <KpiCard label="MRR" value={formatCurrency(totalMrr)} icon={<DollarSign className="h-5 w-5" />} tone="success" hint="Recurring revenue" />
+        <KpiCard label="Active companies" value={companies.filter((c) => c.status === 'active').length} icon={<Building2 className="h-5 w-5" />} tone="brand" />
+        <KpiCard label="Total users" value={formatCompact(totalUsers)} icon={<Users className="h-5 w-5" />} tone="info" />
+        <KpiCard label="Devices deployed" value={formatCompact(totalDevices)} icon={<Cpu className="h-5 w-5" />} tone="purple" />
       </div>
 
       <div className="mt-5 grid gap-5 lg:grid-cols-3">
@@ -83,9 +82,18 @@ export function OwnerDashboard() {
           </CardBody>
         </Card>
         <Card>
-          <CardHeader title="Weekly usage" subtitle="Monitoring sessions" icon={<Activity className="h-4 w-4" />} />
+          <CardHeader title="Weekly alerts" subtitle="Safety events this week" icon={<Activity className="h-4 w-4" />} />
           <CardBody>
-            <BarSeries data={usage} xKey="day" series={[{ key: 'sessions', label: 'Sessions', color: '#3563ff' }]} height={220} />
+            <BarSeries
+              data={weeklyAlerts}
+              xKey="day"
+              series={[
+                { key: 'fatigue', label: 'Fatigue', color: '#f59e0b' },
+                { key: 'drowsiness', label: 'Drowsiness', color: '#f43f5e' },
+                { key: 'distraction', label: 'Distraction', color: '#3563ff' },
+              ]}
+              height={220}
+            />
           </CardBody>
         </Card>
       </div>
