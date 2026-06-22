@@ -1,0 +1,19 @@
+name = "sentinel-ai-edge"
+main = "src/index.ts"
+compatibility_date = "2024-09-23"
+
+[vars]
+BACKEND_URL = "https://api.sentinel-ai.io"
+
+# API_SECRET should be set via `wrangler secret put API_SECRET`
+
+[[routes]]
+pattern = "sentinel-ai.workers.dev/edge/*"
+zone_name = "sentinel-ai.workers.dev"
+
+[build]
+command = "npm run build"
+
+[dev]
+port = 8787
+local_protocol = "http"
