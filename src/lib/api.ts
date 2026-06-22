@@ -361,6 +361,52 @@ export function useCompanies() {
   return useQuery<Company[]>(fetchCompanies, [])
 }
 
+export interface PlatformUser {
+  id: string
+  name: string
+  email: string
+  role: 'employee' | 'manager' | 'owner'
+  roleLabel: 'Employee' | 'Manager' | 'Owner'
+  company: string
+  companyId: string | null
+  status: 'active' | 'offline' | 'on-leave'
+  lastActive: string
+}
+
+const ROLE_LABEL: Record<string, PlatformUser['roleLabel']> = {
+  employee: 'Employee',
+  manager: 'Manager',
+  owner: 'Owner',
+}
+
+async function fetchPlatformUsers(): Promise<PlatformUser[]> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, full_name, email, role, presence, last_active_at, company_id, companies(name)')
+    .order('role', { ascending: true })
+  if (error) throw error
+
+  return (data ?? []).map((p: any) => {
+    const role = (p.role ?? 'employee') as PlatformUser['role']
+    const company = Array.isArray(p.companies) ? p.companies[0] : p.companies
+    return {
+      id: p.id,
+      name: p.full_name ?? 'Unknown',
+      email: p.email ?? '',
+      role,
+      roleLabel: ROLE_LABEL[role] ?? 'Employee',
+      company: company?.name ?? '—',
+      companyId: p.company_id ?? null,
+      status: p.presence === 'online' ? 'active' : p.presence === 'on_leave' ? 'on-leave' : 'offline',
+      lastActive: relativeTime(p.last_active_at),
+    }
+  })
+}
+
+export function usePlatformUsers() {
+  return useQuery<PlatformUser[]>(fetchPlatformUsers, [])
+}
+
 async function fetchAuditLogs(): Promise<AuditLog[]> {
   const { data, error } = await supabase
     .from('audit_logs')
@@ -930,4 +976,33 @@ export async function createCompany(input: {
   unwrap(subErr)
 
   return companyId
+}
+
+export async function updateCompanyBilling(
+  companyId: string,
+  input: { plan: 'Starter' | 'Growth' | 'Enterprise'; seats: number; status: 'active' | 'trial' | 'past-due' | 'churned' },
+): Promise<void> {
+  const { data: plan, error: planErr } = await supabase
+    .from('plans')
+    .select('id, price_per_seat_cents')
+    .eq('tier', input.plan.toLowerCase())
+    .maybeSingle()
+  unwrap(planErr)
+  if (!plan) throw new Error('Selected plan is not available')
+
+  const seats = Math.max(0, Math.floor(input.seats || 0))
+  const companyStatus = { active: 'active', trial: 'trial', 'past-due': 'past_due', churned: 'churned' }[input.status]
+  const subStatus = { active: 'active', trial: 'trialing', 'past-due': 'past_due', churned: 'canceled' }[input.status]
+
+  const { error: companyErr } = await supabase
+    .from('companies')
+    .update({ plan_id: plan.id, seats, status: companyStatus })
+    .eq('id', companyId)
+  unwrap(companyErr)
+
+  const { error: subErr } = await supabase
+    .from('subscriptions')
+    .update({ plan_id: plan.id, seats, status: subStatus, mrr_cents: seats * (plan.price_per_seat_cents ?? 0) })
+    .eq('company_id', companyId)
+  unwrap(subErr)
 }
