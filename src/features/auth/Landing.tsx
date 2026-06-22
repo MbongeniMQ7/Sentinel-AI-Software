@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import {
   ArrowRight,
   CheckCircle2,
@@ -12,6 +12,8 @@ import { Badge } from '@/components/ui/Badge'
 import { logoUrl } from '@/components/shared/Logo'
 
 export function Landing() {
+  const navigate = useNavigate()
+  const goSignIn = () => navigate('/auth/role')
   return (
     <div className="min-h-full bg-surface-subtle">
       {/* Nav */}
@@ -25,12 +27,8 @@ export function Landing() {
             <a href="#cta" className="hover:text-ink">Pricing</a>
           </nav>
           <div className="flex items-center gap-2">
-            <Link to="/auth/role">
-              <Button variant="ghost" size="sm">Sign in</Button>
-            </Link>
-            <Link to="/auth/role">
-              <Button size="sm">Book a demo</Button>
-            </Link>
+            <Button variant="ghost" size="sm" onClick={goSignIn}>Sign in</Button>
+            <Button size="sm" onClick={goSignIn}>Book a demo</Button>
           </div>
         </div>
       </header>
@@ -50,16 +48,12 @@ export function Landing() {
             guiding healthier shifts with privacy-first AI.
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Link to="/auth/role">
-              <Button size="lg" className="w-full sm:w-auto">
-                <Play className="h-4 w-4" /> Try the live demo
-              </Button>
-            </Link>
-            <Link to="/auth/role">
-              <Button size="lg" variant="outline" className="w-full sm:w-auto">
-                Explore platform <ArrowRight className="h-4 w-4" />
-              </Button>
-            </Link>
+            <Button size="lg" className="w-full sm:w-auto" onClick={goSignIn}>
+              <Play className="h-4 w-4" /> Try the live demo
+            </Button>
+            <Button size="lg" variant="outline" className="w-full sm:w-auto" onClick={goSignIn}>
+              Explore platform <ArrowRight className="h-4 w-4" />
+            </Button>
           </div>
           <div className="mt-6 flex items-center justify-center gap-1.5 text-sm text-ink-subtle">
             <div className="flex">
@@ -91,11 +85,9 @@ export function Landing() {
               ))}
             </ul>
             <div className="mt-8">
-              <Link to="/auth/role">
-                <Button size="lg" variant="secondary" className="bg-white text-brand-700 hover:bg-brand-50">
-                  Start the demo <ArrowRight className="h-4 w-4" />
-                </Button>
-              </Link>
+              <Button size="lg" variant="secondary" className="bg-white text-brand-700 hover:bg-brand-50" onClick={goSignIn}>
+                Start the demo <ArrowRight className="h-4 w-4" />
+              </Button>
             </div>
           </div>
         </div>
