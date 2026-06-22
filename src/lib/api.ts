@@ -393,6 +393,7 @@ export interface Ticket {
   category: string
   priority: 'low' | 'medium' | 'high' | 'urgent'
   status: 'open' | 'pending' | 'resolved' | 'closed'
+  escalated: boolean
   company: string
   openedBy: string
   created: string
@@ -402,7 +403,7 @@ async function fetchTickets(): Promise<Ticket[]> {
   const { data, error } = await supabase
     .from('support_tickets')
     .select(`
-      id, number, subject, category, priority, status, created_at,
+      id, number, subject, category, priority, status, escalated, created_at,
       companies(name),
       profiles!support_tickets_opened_by_fkey(full_name)
     `)
@@ -416,7 +417,8 @@ async function fetchTickets(): Promise<Ticket[]> {
     subject: row.subject ?? '—',
     category: row.category ?? 'General',
     priority: (row.priority ?? 'medium') as Ticket['priority'],
-    status: (row.status ?? 'open') as Ticket['status'],
+    status: (row.status === 'in_progress' ? 'pending' : row.status ?? 'open') as Ticket['status'],
+    escalated: row.escalated ?? false,
     company: row.companies?.name ?? '—',
     openedBy: row.profiles?.full_name ?? 'Unknown',
     created: relativeTime(row.created_at),
@@ -425,6 +427,22 @@ async function fetchTickets(): Promise<Ticket[]> {
 
 export function useSupportTickets() {
   return useQuery<Ticket[]>(fetchTickets, [])
+}
+
+/** Manager escalates a ticket to the platform owner (SentinelAI). */
+export async function escalateTicket(id: string): Promise<void> {
+  const { error } = await supabase
+    .from('support_tickets')
+    .update({ escalated: true, status: 'in_progress' })
+    .eq('id', id)
+  unwrap(error)
+}
+
+/** Manager or owner updates a ticket's status. */
+export async function updateTicketStatus(id: string, status: 'open' | 'pending' | 'resolved' | 'closed'): Promise<void> {
+  const dbStatus = status === 'pending' ? 'in_progress' : status
+  const { error } = await supabase.from('support_tickets').update({ status: dbStatus }).eq('id', id)
+  unwrap(error)
 }
 
 async function fetchFaqs(): Promise<Faq[]> {

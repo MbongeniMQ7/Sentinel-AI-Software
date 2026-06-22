@@ -31,6 +31,7 @@ import { ManagerReports } from '@/features/manager/ManagerReports'
 import { ManagerOnboarding } from '@/features/manager/ManagerOnboarding'
 import { ManagerHierarchy } from '@/features/manager/ManagerHierarchy'
 import { ManagerAudit } from '@/features/manager/ManagerAudit'
+import { ManagerSupport } from '@/features/manager/ManagerSupport'
 import { ManagerSettings } from '@/features/manager/ManagerSettings'
 
 // Owner
@@ -93,6 +94,7 @@ export default function App() {
         <Route path="analytics" element={<ManagerAnalytics />} />
         <Route path="devices" element={<ManagerDevices />} />
         <Route path="approvals" element={<ManagerApprovals />} />
+        <Route path="support" element={<ManagerSupport />} />
         <Route path="reports" element={<ManagerReports />} />
         <Route path="onboarding" element={<ManagerOnboarding />} />
         <Route path="hierarchy" element={<ManagerHierarchy />} />

@@ -12,6 +12,7 @@ import {
   HeartPulse,
   HelpCircle,
   LayoutDashboard,
+  LifeBuoy,
   LineChart,
   Network,
   ScrollText,
@@ -44,7 +45,7 @@ export const navConfig: Record<Role, NavGroup[]> = {
       items: [
         { label: 'Dashboard', to: '/user/dashboard', icon: LayoutDashboard },
         { label: 'Live Monitoring', to: '/user/monitoring', icon: HeartPulse },
-        { label: 'Alert Center', to: '/user/alerts', icon: AlertTriangle, badge: '3' },
+        { label: 'Alert Center', to: '/user/alerts', icon: AlertTriangle },
       ],
     },
     {
@@ -70,7 +71,7 @@ export const navConfig: Record<Role, NavGroup[]> = {
       items: [
         { label: 'Dashboard', to: '/admin/dashboard', icon: LayoutDashboard },
         { label: 'Workforce', to: '/admin/workforce', icon: Users },
-        { label: 'Alerts', to: '/admin/alerts', icon: AlertTriangle, badge: '7' },
+        { label: 'Alerts', to: '/admin/alerts', icon: AlertTriangle },
         { label: 'Fatigue Analytics', to: '/admin/analytics', icon: LineChart },
       ],
     },
@@ -78,7 +79,8 @@ export const navConfig: Record<Role, NavGroup[]> = {
       title: 'Management',
       items: [
         { label: 'Devices', to: '/admin/devices', icon: Cpu },
-        { label: 'Approvals', to: '/admin/approvals', icon: ClipboardList, badge: '5' },
+        { label: 'Approvals', to: '/admin/approvals', icon: ClipboardList },
+        { label: 'Support', to: '/admin/support', icon: LifeBuoy },
         { label: 'Reports', to: '/admin/reports', icon: FileBarChart },
         { label: 'Onboarding', to: '/admin/onboarding', icon: UserPlus },
       ],
