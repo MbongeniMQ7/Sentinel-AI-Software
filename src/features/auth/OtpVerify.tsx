@@ -3,14 +3,23 @@ import { Navigate, useNavigate } from 'react-router-dom'
 import { ArrowRight, MailCheck } from 'lucide-react'
 import { AuthLayout } from './AuthLayout'
 import { Button } from '@/components/ui/Button'
-import { useAuth, roleHome } from '@/lib/auth'
+import { useAuth, roleHome, type Role } from '@/lib/auth'
+import { requestOtp, verifyOtp } from '@/lib/supabase'
+
+function maskEmail(email: string): string {
+  const [name, domain] = email.split('@')
+  if (!domain) return email
+  const shown = name.slice(0, 1)
+  return `${shown}${'•'.repeat(Math.max(name.length - 1, 1))}@${domain}`
+}
 
 export function OtpVerify() {
-  const { pendingRole, login } = useAuth()
+  const { pendingEmail, refresh } = useAuth()
   const navigate = useNavigate()
   const [code, setCode] = useState(['', '', '', '', '', ''])
   const [seconds, setSeconds] = useState(30)
   const [verifying, setVerifying] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const inputs = useRef<(HTMLInputElement | null)[]>([])
 
   useEffect(() => {
@@ -18,7 +27,7 @@ export function OtpVerify() {
     return () => clearInterval(t)
   }, [])
 
-  if (!pendingRole) return <Navigate to="/auth/role" replace />
+  if (!pendingEmail) return <Navigate to="/auth/role" replace />
 
   const handleChange = (i: number, val: string) => {
     if (!/^\d?$/.test(val)) return
@@ -44,12 +53,27 @@ export function OtpVerify() {
 
   const filled = code.every((c) => c !== '')
 
-  const verify = () => {
+  const verify = async () => {
     setVerifying(true)
-    setTimeout(() => {
-      login(pendingRole)
-      navigate(roleHome[pendingRole])
-    }, 900)
+    setError(null)
+    try {
+      const { role } = await verifyOtp(pendingEmail, code.join(''))
+      await refresh()
+      navigate(roleHome[(role as Role) ?? 'employee'])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not verify the code')
+      setVerifying(false)
+    }
+  }
+
+  const resend = async () => {
+    try {
+      await requestOtp(pendingEmail)
+      setSeconds(30)
+      setError(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not resend the code')
+    }
   }
 
   return (
@@ -60,7 +84,7 @@ export function OtpVerify() {
         </div>
         <div className="text-sm">
           <p className="font-medium text-ink">Code sent</p>
-          <p className="text-xs text-ink-muted">a••••@sentinel.ai · Use any 6 digits for the demo</p>
+          <p className="text-xs text-ink-muted">{maskEmail(pendingEmail)}</p>
         </div>
       </div>
 
@@ -79,6 +103,8 @@ export function OtpVerify() {
         ))}
       </div>
 
+      {error && <p className="mt-4 text-center text-sm text-rose-600">{error}</p>}
+
       <Button className="mt-6 w-full" size="lg" disabled={!filled} loading={verifying} onClick={verify}>
         {verifying ? 'Verifying…' : 'Verify & continue'}
         {!verifying && <ArrowRight className="h-4 w-4" />}
@@ -89,7 +115,7 @@ export function OtpVerify() {
         {seconds > 0 ? (
           <span className="text-ink-subtle">Resend in {seconds}s</span>
         ) : (
-          <button className="font-medium text-brand-600 hover:underline" onClick={() => setSeconds(30)}>
+          <button className="font-medium text-brand-600 hover:underline" onClick={resend}>
             Resend code
           </button>
         )}

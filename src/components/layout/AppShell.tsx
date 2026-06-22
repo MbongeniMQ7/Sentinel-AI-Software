@@ -34,8 +34,8 @@ export function AppShell({ role }: AppShellProps) {
   const meta = roleMeta[role]
   const groups = navConfig[role]
 
-  const handleLogout = () => {
-    logout()
+  const handleLogout = async () => {
+    await logout()
     navigate('/')
   }
 

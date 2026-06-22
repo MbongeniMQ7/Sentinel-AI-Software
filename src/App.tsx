@@ -1,5 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
-import { useAuth, type Role } from '@/lib/auth'
+import { useAuth, roleHome, type Role } from '@/lib/auth'
 import { AppShell } from '@/components/layout/AppShell'
 
 // Auth
@@ -45,9 +45,16 @@ import { OwnerReports } from '@/features/owner/OwnerReports'
 import { OwnerSettings } from '@/features/owner/OwnerSettings'
 
 function RequireRole({ role }: { role: Role }) {
-  const { user } = useAuth()
+  const { user, loading } = useAuth()
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-surface-subtle">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-line border-t-brand-600" />
+      </div>
+    )
+  }
   if (!user) return <Navigate to="/auth/role" replace />
-  if (user.role !== role) return <Navigate to="/" replace />
+  if (user.role !== role) return <Navigate to={roleHome[user.role]} replace />
   return <AppShell role={role} />
 }
 

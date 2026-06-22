@@ -86,12 +86,65 @@ Deno.serve(async (req: Request) => {
     return jsonResponse({ error: 'Incorrect code' }, 401)
   }
 
-  const { error: consumeErr } = await supabase
+  await supabase
     .from('otp_codes')
     .update({ consumed_at: new Date().toISOString() })
     .eq('id', record.id)
 
-  if (consumeErr) return jsonResponse({ error: 'Could not verify code' }, 500)
+  // ---- Provision the auth user + profile and mint a session token ----------
+  // generateLink (magiclink) creates the auth user if it doesn't exist and
+  // returns a hashed_token the client exchanges for a real session.
+  const { data: linkData, error: linkErr } = await supabase.auth.admin.generateLink({
+    type: 'magiclink',
+    email,
+  })
 
-  return jsonResponse({ success: true, email, role: record.role ?? null })
+  if (linkErr || !linkData?.user || !linkData.properties?.hashed_token) {
+    console.error('generateLink error', linkErr)
+    return jsonResponse({ error: 'Could not establish a session' }, 500)
+  }
+
+  const userId = linkData.user.id
+
+  // Role / company come from the account_roles mapping (defaults to employee).
+  const { data: mapping } = await supabase
+    .from('account_roles')
+    .select('role, company_id, full_name, title')
+    .eq('email', email)
+    .maybeSingle()
+
+  const role = mapping?.role ?? 'employee'
+  const fullName = mapping?.full_name ?? email.split('@')[0]
+  const companyId = mapping?.company_id ?? null
+
+  // Link the profile to the auth user id so RLS (auth.uid()) resolves the role.
+  const { error: upsertErr } = await supabase.from('profiles').upsert(
+    {
+      id: userId,
+      email,
+      role,
+      company_id: companyId,
+      full_name: fullName,
+      title: mapping?.title ?? null,
+      is_active: true,
+      last_active_at: new Date().toISOString(),
+    },
+    { onConflict: 'id' },
+  )
+
+  // A seeded data profile may already own this email with a different id.
+  // Fall back to updating that row's role/company so login still succeeds.
+  if (upsertErr) {
+    await supabase
+      .from('profiles')
+      .update({ role, company_id: companyId, last_active_at: new Date().toISOString() })
+      .eq('email', email)
+  }
+
+  return jsonResponse({
+    success: true,
+    email,
+    role,
+    token_hash: linkData.properties.hashed_token,
+  })
 })
