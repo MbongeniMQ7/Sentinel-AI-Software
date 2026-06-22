@@ -19,6 +19,7 @@ import { navConfig, roleMeta, type NavGroup } from '@/lib/nav'
 import { useAlerts } from '@/lib/api'
 import { Avatar } from '@/components/ui/Avatar'
 import { logoUrl } from '@/components/shared/Logo'
+import { LanguageSwitcher } from '@/components/shared/LanguageSwitcher'
 import { Button } from '@/components/ui/Button'
 import { Dropdown, DropdownDivider, DropdownItem } from '@/components/ui/Dropdown'
 import { Input } from '@/components/ui/Input'
@@ -177,6 +178,7 @@ export function AppShell({ role }: AppShellProps) {
           <GlobalSearch groups={groups} />
 
           <div className="ml-auto flex items-center gap-1.5">
+            <LanguageSwitcher className="hidden sm:block" />
             <Button variant="ghost" size="icon" onClick={toggle} aria-label="Toggle theme">
               {theme === 'dark' ? <Sun className="h-[18px] w-[18px]" /> : <Moon className="h-[18px] w-[18px]" />}
             </Button>
