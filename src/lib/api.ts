@@ -182,29 +182,33 @@ function useQuery<T>(fetcher: () => Promise<T>, fallback: T, deps: unknown[] = [
 
 async function fetchEmployees(): Promise<Employee[]> {
   const { data, error } = await supabase
-    .from('employee_profiles')
+    .from('profiles')
     .select(`
-      profile_id, job_title, monitoring, status, fatigue_score, heart_rate, risk_level,
-      departments(name), shifts(type),
-      profiles!employee_profiles_profile_id_fkey(id, full_name, email, presence, last_active_at, avatar_url)
+      id, full_name, email, presence, last_active_at, avatar_url,
+      employee_profiles(
+        job_title, monitoring, status, fatigue_score, heart_rate, risk_level,
+        departments(name), shifts(type)
+      )
     `)
+    .eq('role', 'employee')
   if (error) throw error
 
-  return (data ?? []).map((row: any, i: number) => {
-    const p = row.profiles ?? {}
-    const shiftType = row.shifts?.type ?? 'morning'
+  return (data ?? []).map((p: any, i: number) => {
+    const row = Array.isArray(p.employee_profiles) ? p.employee_profiles[0] : p.employee_profiles
+    const ep = row ?? {}
+    const shiftType = ep.shifts?.type ?? 'morning'
     return {
       id: p.id,
       name: p.full_name ?? 'Unknown',
       email: p.email ?? '',
-      role: row.job_title ?? '—',
-      department: row.departments?.name ?? '—',
+      role: ep.job_title ?? '—',
+      department: ep.departments?.name ?? '—',
       shift: cap(shiftType) as Employee['shift'],
-      status: ENUM_TO_DISPLAY.empStatus[row.status] ?? 'offline',
-      fatigue: row.fatigue_score ?? 0,
-      heartRate: row.heart_rate ?? 0,
-      riskLevel: (row.risk_level ?? 'low') as RiskLevel,
-      monitoring: (row.monitoring ?? 'camera') as Employee['monitoring'],
+      status: ENUM_TO_DISPLAY.empStatus[ep.status] ?? 'offline',
+      fatigue: ep.fatigue_score ?? 0,
+      heartRate: ep.heart_rate ?? 0,
+      riskLevel: (ep.risk_level ?? 'low') as RiskLevel,
+      monitoring: (ep.monitoring ?? 'wearable') as Employee['monitoring'],
       device: '—',
       avatarStatus: (p.presence ?? 'offline') as Employee['avatarStatus'],
       lastActive: relativeTime(p.last_active_at),
