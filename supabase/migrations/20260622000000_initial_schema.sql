@@ -549,14 +549,22 @@ end$$;
 --   profile to derive role + company for tenant isolation.
 -- ============================================================================
 
+-- ----------------------------------------------------------------------------
+-- 12.1 Role / scope helper functions
+--   Implements the three-role model from the Role-Based Access Guide:
+--     owner   -> platform-wide governance (cross-company)
+--     manager -> company-scoped team operations  (a.k.a. "admin")
+--     employee-> own personal data + self-service (a.k.a. "user")
+-- ----------------------------------------------------------------------------
+
 create or replace function current_role_name()
 returns user_role
-language sql stable
+language sql stable security definer set search_path = public
 as $$ select role from profiles where id = auth.uid() $$;
 
 create or replace function current_company_id()
 returns uuid
-language sql stable
+language sql stable security definer set search_path = public
 as $$ select company_id from profiles where id = auth.uid() $$;
 
 create or replace function is_owner()
@@ -564,7 +572,34 @@ returns boolean
 language sql stable
 as $$ select coalesce(current_role_name() = 'owner', false) $$;
 
--- Enable RLS on every tenant-scoped table.
+create or replace function is_manager()
+returns boolean
+language sql stable
+as $$ select coalesce(current_role_name() = 'manager', false) $$;
+
+-- Owner sees all; manager sees only rows inside their own company.
+create or replace function manages_company(target_company uuid)
+returns boolean
+language sql stable
+as $$ select is_owner() or (is_manager() and target_company = current_company_id()) $$;
+
+-- True when the caller is the manager-of-record for the given employee.
+create or replace function manages_employee(target_employee uuid)
+returns boolean
+language sql stable security definer set search_path = public
+as $$
+  select is_owner() or exists (
+    select 1 from employee_profiles ep
+    where ep.profile_id = target_employee
+      and ep.company_id = current_company_id()
+      and is_manager()
+  )
+$$;
+
+-- ----------------------------------------------------------------------------
+-- 12.2 Enable RLS on every tenant-scoped table
+-- ----------------------------------------------------------------------------
+
 do $$
 declare
   t text;
@@ -573,59 +608,306 @@ begin
     'companies','subscriptions','departments','shifts','profiles',
     'employee_profiles','devices','monitoring_sessions','fatigue_readings',
     'alerts','alert_events','leave_requests','break_requests','reports',
-    'invoices','support_tickets','ticket_messages','api_keys','webhooks',
-    'notifications','invites','audit_logs','activity_events'
+    'report_templates','invoices','support_tickets','ticket_messages',
+    'faqs','api_keys','webhooks','notification_preferences','notifications',
+    'invites','audit_logs','activity_events'
   ]
   loop
     execute format('alter table %I enable row level security;', t);
   end loop;
 end$$;
 
--- Owners see everything; managers/employees are scoped to their company.
+-- ----------------------------------------------------------------------------
+-- 12.3 Companies & commercial governance  (OWNER only; managers read own)
+-- ----------------------------------------------------------------------------
+
 create policy companies_read on companies for select
   using (is_owner() or id = current_company_id());
-
-create policy companies_write on companies for all
+create policy companies_owner_write on companies for all
   using (is_owner()) with check (is_owner());
 
--- Generic per-company read policy for the common tables.
+-- Subscriptions, invoices and plan/revenue data are owner-governed.
+-- Managers may READ their own company's billing; only owners may mutate.
+create policy subscriptions_read on subscriptions for select
+  using (is_owner() or company_id = current_company_id());
+create policy subscriptions_owner_write on subscriptions for all
+  using (is_owner()) with check (is_owner());
+
+create policy invoices_read on invoices for select
+  using (is_owner() or company_id = current_company_id());
+create policy invoices_owner_write on invoices for all
+  using (is_owner()) with check (is_owner());
+
+-- ----------------------------------------------------------------------------
+-- 12.4 Org structure  (read: company members; write: manager/owner)
+-- ----------------------------------------------------------------------------
+
 do $$
-declare
-  t text;
+declare t text;
 begin
-  foreach t in array array[
-    'subscriptions','departments','shifts','employee_profiles','devices',
-    'monitoring_sessions','fatigue_readings','alerts','alert_events',
-    'leave_requests','break_requests','reports','invoices','support_tickets',
-    'api_keys','webhooks','invites','audit_logs','activity_events'
-  ]
-  loop
-    execute format(
-      'create policy %1$s_company_read on %1$s for select
-         using (is_owner() or company_id = current_company_id());', t);
+  foreach t in array array['departments','shifts'] loop
+    execute format($f$
+      create policy %1$s_read on %1$s for select
+        using (is_owner() or company_id = current_company_id());
+      create policy %1$s_manage on %1$s for all
+        using (manages_company(company_id))
+        with check (manages_company(company_id));
+    $f$, t);
   end loop;
 end$$;
 
--- Profiles: a user can read peers in their company; owners read all.
-create policy profiles_read on profiles for select
-  using (is_owner() or company_id = current_company_id() or id = auth.uid());
+-- ----------------------------------------------------------------------------
+-- 12.5 Profiles & employee records
+--   employee -> own row only;  manager -> own company;  owner -> all
+-- ----------------------------------------------------------------------------
 
+create policy profiles_read on profiles for select
+  using (
+    id = auth.uid()                                   -- always see yourself
+    or is_owner()                                     -- owner: everyone
+    or (is_manager() and company_id = current_company_id())  -- manager: team
+  );
+
+-- Users may edit only their own profile (theme, contact fields, etc.).
 create policy profiles_self_update on profiles for update
   using (id = auth.uid()) with check (id = auth.uid());
 
--- Notifications & preferences are private to the owning user.
-create policy notifications_owner on notifications for select
+-- Managers/owners onboard & administer profiles within their scope.
+create policy profiles_manage on profiles for all
+  using (is_owner() or (is_manager() and company_id = current_company_id()))
+  with check (is_owner() or (is_manager() and company_id = current_company_id()));
+
+-- employee_profiles: self read + manager/owner full management.
+create policy employee_profiles_read on employee_profiles for select
+  using (
+    profile_id = auth.uid()
+    or is_owner()
+    or (is_manager() and company_id = current_company_id())
+  );
+create policy employee_profiles_manage on employee_profiles for all
+  using (manages_company(company_id))
+  with check (manages_company(company_id));
+
+-- ----------------------------------------------------------------------------
+-- 12.6 Devices & IoT fleet
+--   global fleet -> owner;  team devices -> manager;  employees: none
+-- ----------------------------------------------------------------------------
+
+create policy devices_read on devices for select
+  using (is_owner() or (is_manager() and company_id = current_company_id()));
+create policy devices_manage on devices for all
+  using (manages_company(company_id))
+  with check (manages_company(company_id));
+
+-- ----------------------------------------------------------------------------
+-- 12.7 Monitoring telemetry  (employee: OWN data only; manager/owner: team)
+-- ----------------------------------------------------------------------------
+
+create policy monitoring_sessions_read on monitoring_sessions for select
+  using (
+    employee_id = auth.uid()
+    or is_owner()
+    or (is_manager() and company_id = current_company_id())
+  );
+-- An employee can start/stop their own monitoring session.
+create policy monitoring_sessions_self on monitoring_sessions for all
+  using (employee_id = auth.uid() and company_id = current_company_id())
+  with check (employee_id = auth.uid() and company_id = current_company_id());
+create policy monitoring_sessions_manage on monitoring_sessions for all
+  using (manages_company(company_id))
+  with check (manages_company(company_id));
+
+create policy fatigue_readings_read on fatigue_readings for select
+  using (
+    employee_id = auth.uid()
+    or is_owner()
+    or (is_manager() and company_id = current_company_id())
+  );
+-- Telemetry is written by the device/edge service on the employee's behalf.
+create policy fatigue_readings_self_insert on fatigue_readings for insert
+  with check (employee_id = auth.uid() and company_id = current_company_id());
+
+-- ----------------------------------------------------------------------------
+-- 12.8 Alerts
+--   employee -> own alerts (view + acknowledge personal)
+--   manager  -> team alerts (triage, acknowledge, escalate, resolve)
+--   owner    -> oversight across companies
+-- ----------------------------------------------------------------------------
+
+create policy alerts_read on alerts for select
+  using (
+    employee_id = auth.uid()
+    or is_owner()
+    or (is_manager() and company_id = current_company_id())
+  );
+-- Employees may acknowledge their own alert; managers/owners may manage any
+-- alert in scope. (Column-level limits on what an employee may change are
+-- enforced in the API layer.)
+create policy alerts_self_ack on alerts for update
+  using (employee_id = auth.uid())
+  with check (employee_id = auth.uid());
+create policy alerts_manage on alerts for all
+  using (manages_company(company_id))
+  with check (manages_company(company_id));
+
+create policy alert_events_read on alert_events for select
+  using (
+    is_owner()
+    or exists (
+      select 1 from alerts a
+      where a.id = alert_events.alert_id
+        and (a.employee_id = auth.uid()
+             or (is_manager() and a.company_id = current_company_id()))
+    )
+  );
+create policy alert_events_insert on alert_events for insert
+  with check (
+    exists (
+      select 1 from alerts a
+      where a.id = alert_events.alert_id
+        and manages_company(a.company_id)
+    )
+  );
+
+-- ----------------------------------------------------------------------------
+-- 12.9 Leave & break requests
+--   employee -> create + read own;  manager/owner -> read + approve/reject
+-- ----------------------------------------------------------------------------
+
+create policy leave_requests_read on leave_requests for select
+  using (
+    employee_id = auth.uid()
+    or is_owner()
+    or (is_manager() and company_id = current_company_id())
+  );
+create policy leave_requests_self_insert on leave_requests for insert
+  with check (employee_id = auth.uid() and company_id = current_company_id());
+create policy leave_requests_review on leave_requests for update
+  using (manages_company(company_id))
+  with check (manages_company(company_id));
+
+create policy break_requests_read on break_requests for select
+  using (
+    employee_id = auth.uid()
+    or is_owner()
+    or (is_manager() and company_id = current_company_id())
+  );
+create policy break_requests_self_insert on break_requests for insert
+  with check (employee_id = auth.uid() and company_id = current_company_id());
+create policy break_requests_review on break_requests for update
+  using (manages_company(company_id))
+  with check (manages_company(company_id));
+
+-- ----------------------------------------------------------------------------
+-- 12.10 Reports
+--   Everyone can generate reports; visibility is row-scoped to the creator
+--   for employees, and to the whole company for managers/owners.
+-- ----------------------------------------------------------------------------
+
+create policy report_templates_read on report_templates for select
+  using (true);                                  -- catalog is readable by all
+create policy report_templates_manage on report_templates for all
+  using (is_owner()) with check (is_owner());
+
+create policy reports_read on reports for select
+  using (
+    created_by = auth.uid()
+    or is_owner()
+    or (is_manager() and company_id = current_company_id())
+  );
+create policy reports_insert on reports for insert
+  with check (
+    created_by = auth.uid()
+    and (company_id is null or company_id = current_company_id() or is_owner())
+  );
+create policy reports_manage on reports for update
+  using (created_by = auth.uid() or manages_company(company_id))
+  with check (created_by = auth.uid() or manages_company(company_id));
+
+-- ----------------------------------------------------------------------------
+-- 12.11 Support tickets & FAQs
+-- ----------------------------------------------------------------------------
+
+create policy faqs_read on faqs for select using (is_active);
+create policy faqs_manage on faqs for all
+  using (is_owner()) with check (is_owner());
+
+create policy support_tickets_read on support_tickets for select
+  using (
+    opened_by = auth.uid()
+    or is_owner()
+    or (is_manager() and company_id = current_company_id())
+  );
+create policy support_tickets_create on support_tickets for insert
+  with check (opened_by = auth.uid());
+create policy support_tickets_manage on support_tickets for update
+  using (is_owner() or (is_manager() and company_id = current_company_id()))
+  with check (is_owner() or (is_manager() and company_id = current_company_id()));
+
+create policy ticket_messages_read on ticket_messages for select
+  using (
+    exists (
+      select 1 from support_tickets t
+      where t.id = ticket_messages.ticket_id
+        and (t.opened_by = auth.uid()
+             or is_owner()
+             or (is_manager() and t.company_id = current_company_id()))
+    )
+    and (not is_internal or is_owner() or is_manager())
+  );
+create policy ticket_messages_insert on ticket_messages for insert
+  with check (
+    author_id = auth.uid()
+    and exists (
+      select 1 from support_tickets t
+      where t.id = ticket_messages.ticket_id
+        and (t.opened_by = auth.uid()
+             or is_owner()
+             or (is_manager() and t.company_id = current_company_id()))
+    )
+  );
+
+-- ----------------------------------------------------------------------------
+-- 12.12 Platform configuration  (OWNER governance: API keys, webhooks, invites)
+-- ----------------------------------------------------------------------------
+
+-- Secrets are never selectable by non-owners.
+create policy api_keys_owner on api_keys for all
+  using (is_owner()) with check (is_owner());
+
+create policy webhooks_owner on webhooks for all
+  using (is_owner()) with check (is_owner());
+
+-- Invites: owner anywhere; manager within their company.
+create policy invites_read on invites for select
+  using (is_owner() or (is_manager() and company_id = current_company_id()));
+create policy invites_manage on invites for all
+  using (manages_company(company_id))
+  with check (manages_company(company_id));
+
+-- ----------------------------------------------------------------------------
+-- 12.13 Notifications (private to the user)
+-- ----------------------------------------------------------------------------
+
+create policy notifications_read on notifications for select
   using (profile_id = auth.uid());
+create policy notifications_update on notifications for update
+  using (profile_id = auth.uid()) with check (profile_id = auth.uid());
 
--- Employees manage their own break / leave requests; managers approve.
-create policy break_requests_insert on break_requests for insert
-  with check (employee_id = auth.uid() and company_id = current_company_id());
+create policy notif_prefs_self on notification_preferences for all
+  using (profile_id = auth.uid()) with check (profile_id = auth.uid());
 
-create policy leave_requests_insert on leave_requests for insert
-  with check (employee_id = auth.uid() and company_id = current_company_id());
+-- ----------------------------------------------------------------------------
+-- 12.14 Audit & activity logs  (read-only to scoped roles; inserts via service)
+--   employee -> no access;  manager -> company scope;  owner -> all
+-- ----------------------------------------------------------------------------
 
--- NOTE: Manager/owner write policies (approvals, device mgmt, escalations)
--- should be added per workflow, e.g.:
---   create policy alerts_manage on alerts for update
---     using (is_owner() or (current_role_name() = 'manager'
---            and company_id = current_company_id()));
+create policy audit_logs_read on audit_logs for select
+  using (is_owner() or (is_manager() and company_id = current_company_id()));
+
+create policy activity_events_read on activity_events for select
+  using (is_owner() or (is_manager() and company_id = current_company_id()));
+
+-- NOTE: audit_logs / activity_events / fatigue_readings are typically written
+-- by trusted edge/service roles (service_role bypasses RLS in Supabase), so no
+-- INSERT policies are granted to end-user roles beyond those defined above.
