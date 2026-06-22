@@ -96,6 +96,20 @@ export function OwnerUsers() {
     [query, role, users],
   )
 
+  const exportCsv = () => {
+    const headers = ['Name', 'Email', 'Role', 'Company', 'Status', 'Last active']
+    const escape = (v: string) => `"${String(v).replace(/"/g, '""')}"`
+    const rows = filtered.map((u) => [u.name, u.email, u.role, u.company, u.status, u.lastActive].map(escape).join(','))
+    const csv = [headers.join(','), ...rows].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `users-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   const columns: Column<GlobalUser>[] = [
     {
       key: 'name',
@@ -148,7 +162,7 @@ export function OwnerUsers() {
               <option value="all">All roles</option>
               <option>Employee</option><option>Manager</option><option>Admin</option><option>Owner</option>
             </Select>
-            <Button variant="outline" size="icon"><Download className="h-4 w-4" /></Button>
+            <Button variant="outline" size="icon" onClick={exportCsv} disabled={filtered.length === 0} aria-label="Export users"><Download className="h-4 w-4" /></Button>
           </div>
         </div>
         <CardBody className="p-0">

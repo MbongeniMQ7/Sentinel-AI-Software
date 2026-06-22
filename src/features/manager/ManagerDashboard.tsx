@@ -24,6 +24,7 @@ export function ManagerDashboard() {
   const { data: fatigueTrend } = useFatigueTrend()
   const { data: departmentFatigue } = useDepartmentFatigue()
   const liveAlerts = alerts.slice(0, 6)
+  const avgFatigue = employees.length ? Math.round(employees.reduce((s, e) => s + e.fatigue, 0) / employees.length) : 0
   const riskDist = [
     { name: 'Low', value: employees.filter((e) => e.riskLevel === 'low').length, color: '#10b981' },
     { name: 'Moderate', value: employees.filter((e) => e.riskLevel === 'moderate').length, color: '#f59e0b' },
@@ -38,16 +39,16 @@ export function ManagerDashboard() {
         description="Live workforce wellness across your teams."
         actions={
           <>
-            <Button variant="outline" size="sm"><Activity className="h-4 w-4" /> Live view</Button>
+            <Link to="/admin/workforce"><Button variant="outline" size="sm"><Activity className="h-4 w-4" /> Live view</Button></Link>
             <Link to="/admin/reports"><Button size="sm">Generate report</Button></Link>
           </>
         }
       />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard label="Active workforce" value={employees.filter((e) => e.status === 'active').length} icon={<Users className="h-5 w-5" />} tone="brand" delta={4} hint="On shift now" />
-        <KpiCard label="Avg fatigue" value="42" icon={<Activity className="h-5 w-5" />} tone="warning" delta={-6} invertDelta hint="Across all teams" />
-        <KpiCard label="Open alerts" value={alerts.filter((a) => a.status === 'open').length} icon={<Bell className="h-5 w-5" />} tone="danger" delta={2} invertDelta />
+        <KpiCard label="Active workforce" value={employees.filter((e) => e.status === 'active').length} icon={<Users className="h-5 w-5" />} tone="brand" hint="On shift now" />
+        <KpiCard label="Avg fatigue" value={avgFatigue} icon={<Activity className="h-5 w-5" />} tone="warning" hint="Across all teams" />
+        <KpiCard label="Open alerts" value={alerts.filter((a) => a.status === 'open').length} icon={<Bell className="h-5 w-5" />} tone="danger" />
         <KpiCard label="On break / leave" value={employees.filter((e) => e.status === 'on-break' || e.status === 'on-leave').length} icon={<Coffee className="h-5 w-5" />} tone="purple" />
       </div>
 
