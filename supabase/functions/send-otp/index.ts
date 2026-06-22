@@ -10,7 +10,8 @@
 //
 // Secrets (set with `supabase secrets set`):
 //   RESEND_API_KEY   — Resend API key (required)
-//   OTP_FROM_EMAIL   — verified sender, defaults to onboarding@resend.dev
+//   OTP_FROM_EMAIL   — verified sender, defaults to no-reply@mmqtech.co.za
+//   OTP_REPLY_TO     — monitored reply mailbox, defaults to support@mmqtech.co.za
 //   OTP_APP_NAME     — branding used in the email, defaults to "SentinelAI"
 //
 // Auto-injected by the Supabase runtime:
@@ -35,6 +36,22 @@ function generateCode(): string {
   // Cryptographically secure 6-digit code (000000–999999).
   const n = crypto.getRandomValues(new Uint32Array(1))[0] % 1_000_000
   return n.toString().padStart(6, '0')
+}
+
+function otpEmailText(appName: string, code: string): string {
+  const year = new Date().getFullYear()
+  return [
+    `${appName} — Verify it's you`,
+    '',
+    `Your verification code is: ${code}`,
+    '',
+    `Enter this code to securely sign in to your workspace.`,
+    `This code expires in ${OTP_TTL_MINUTES} minutes.`,
+    '',
+    `Didn't request this code? You can safely ignore this email — your account is still secure.`,
+    '',
+    `© ${year} ${appName} · Workforce Fatigue & Wellness Platform`,
+  ].join('\n')
 }
 
 function otpEmailHtml(appName: string, code: string, logoUrl: string): string {
@@ -183,7 +200,8 @@ Deno.serve(async (req: Request) => {
 
   // ---- Send via Resend -----------------------------------------------------
   const appName = Deno.env.get('OTP_APP_NAME') ?? 'SentinelAI'
-  const fromEmail = Deno.env.get('OTP_FROM_EMAIL') ?? 'onboarding@resend.dev'
+  const fromEmail = Deno.env.get('OTP_FROM_EMAIL') ?? 'no-reply@mmqtech.co.za'
+  const replyTo = Deno.env.get('OTP_REPLY_TO') ?? 'support@mmqtech.co.za'
   const logoUrl =
     Deno.env.get('OTP_LOGO_URL') ??
     `${Deno.env.get('SUPABASE_URL')}/storage/v1/object/public/public-assets/logo.png`
@@ -196,9 +214,11 @@ Deno.serve(async (req: Request) => {
     },
     body: JSON.stringify({
       from: `${appName} <${fromEmail}>`,
+      reply_to: replyTo,
       to: [email],
       subject: `Your ${appName} verification code`,
       html: otpEmailHtml(appName, code, logoUrl),
+      text: otpEmailText(appName, code),
     }),
   })
 
