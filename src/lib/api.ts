@@ -477,18 +477,43 @@ export function useSupportTickets() {
 
 /** Manager escalates a ticket to the platform owner (SentinelAI). */
 export async function escalateTicket(id: string): Promise<void> {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('support_tickets')
     .update({ escalated: true, status: 'in_progress' })
     .eq('id', id)
+    .select('number, subject, priority, companies(name)')
+    .single()
   unwrap(error)
+  if (data) {
+    const company = Array.isArray((data as any).companies)
+      ? (data as any).companies[0]?.name
+      : (data as any).companies?.name
+    notify('ticket_escalated', {
+      number: data.number,
+      subject: data.subject,
+      priority: data.priority,
+      companyName: company ?? null,
+    })
+  }
 }
 
 /** Manager or owner updates a ticket's status. */
 export async function updateTicketStatus(id: string, status: 'open' | 'pending' | 'resolved' | 'closed'): Promise<void> {
   const dbStatus = status === 'pending' ? 'in_progress' : status
-  const { error } = await supabase.from('support_tickets').update({ status: dbStatus }).eq('id', id)
+  const { data, error } = await supabase
+    .from('support_tickets')
+    .update({ status: dbStatus })
+    .eq('id', id)
+    .select('number, subject, opened_by')
+    .single()
   unwrap(error)
+  if (data && status === 'resolved') {
+    notify('ticket_resolved', {
+      openedById: data.opened_by,
+      number: data.number,
+      subject: data.subject,
+    })
+  }
 }
 
 async function fetchFaqs(): Promise<Faq[]> {
@@ -663,6 +688,15 @@ function unwrap(error: { message: string } | null) {
   if (error) throw new Error(error.message)
 }
 
+/** Fire-and-forget activity email via the `send-notification` edge function.
+ *  Never throws and is never awaited by callers — email delivery must never
+ *  block or fail the underlying action. Every platform activity routes here. */
+export function notify(type: string, data: Record<string, unknown>): void {
+  void supabase.functions
+    .invoke('send-notification', { body: { type, data } })
+    .catch((err) => console.warn('notify failed:', type, err))
+}
+
 /** Employee submits a new leave request. */
 export async function submitLeaveRequest(input: {
   employeeId: string
@@ -682,6 +716,13 @@ export async function submitLeaveRequest(input: {
     status: 'pending',
   })
   unwrap(error)
+  notify('leave_submitted', {
+    employeeId: input.employeeId,
+    type: DISPLAY_TO_ENUM.leaveType[input.type] ?? input.type.toLowerCase(),
+    startDate: input.startDate,
+    endDate: input.endDate,
+    reason: input.reason,
+  })
 }
 
 /** Employee submits a new break request. */
@@ -699,24 +740,50 @@ export async function submitBreakRequest(input: {
     status: 'pending',
   })
   unwrap(error)
+  notify('break_submitted', {
+    employeeId: input.employeeId,
+    reason: input.reason,
+    durationMin: input.durationMin,
+  })
 }
 
 /** Manager/owner approves or rejects a leave request. */
 export async function reviewLeaveRequest(id: string, status: 'approved' | 'rejected', reviewerId: string): Promise<void> {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('leave_requests')
     .update({ status, reviewed_by: reviewerId })
     .eq('id', id)
+    .select('employee_id, type, start_date, end_date')
+    .single()
   unwrap(error)
+  if (data) {
+    notify('leave_reviewed', {
+      employeeId: data.employee_id,
+      status,
+      type: data.type,
+      startDate: data.start_date,
+      endDate: data.end_date,
+    })
+  }
 }
 
 /** Manager/owner approves or rejects a break request. */
 export async function reviewBreakRequest(id: string, status: 'approved' | 'rejected', reviewerId: string): Promise<void> {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('break_requests')
     .update({ status, reviewed_by: reviewerId })
     .eq('id', id)
+    .select('employee_id, reason, duration_min')
+    .single()
   unwrap(error)
+  if (data) {
+    notify('break_reviewed', {
+      employeeId: data.employee_id,
+      status,
+      reason: data.reason,
+      durationMin: data.duration_min,
+    })
+  }
 }
 
 /** Employee acknowledges their own alert. */
@@ -728,9 +795,22 @@ export async function acknowledgeAlert(id: string): Promise<void> {
 
 /** Manager/owner transitions an alert (escalate / resolve) and logs the event. */
 export async function updateAlertStatus(id: string, status: AlertStatus, note?: string): Promise<void> {
-  const { error } = await supabase.from('alerts').update({ status }).eq('id', id)
+  const { data, error } = await supabase
+    .from('alerts')
+    .update({ status })
+    .eq('id', id)
+    .select('employee_id, type')
+    .single()
   unwrap(error)
   await supabase.from('alert_events').insert({ alert_id: id, to_status: status, note: note ?? `Marked ${status}` })
+  if (data && (status === 'escalated' || status === 'resolved')) {
+    notify('alert_status', {
+      employeeId: data.employee_id,
+      alertType: ENUM_TO_DISPLAY.alertType[data.type] ?? data.type,
+      status,
+      note,
+    })
+  }
 }
 
 /** Update the signed-in user's own profile fields. */
@@ -852,6 +932,14 @@ export async function submitSupportTicket(input: {
       body: input.message,
     })
   }
+  notify('ticket_submitted', {
+    openedById: input.openedBy,
+    companyId: input.companyId,
+    number,
+    subject: input.subject,
+    category: input.category,
+    priority: input.priority,
+  })
 }
 
 /** Manager/owner adds a device to the fleet. */
@@ -871,12 +959,33 @@ export async function addDevice(input: {
     assigned_to: input.assignedTo || null,
   })
   unwrap(error)
+  if (input.assignedTo) {
+    notify('device_assigned', {
+      assignedToId: input.assignedTo,
+      deviceName: input.name,
+      type: input.type,
+      location: input.location,
+    })
+  }
 }
 
 /** Manager/owner reassigns a device to an employee (or unassigns when null). */
 export async function reassignDevice(id: string, assignedTo: string | null): Promise<void> {
-  const { error } = await supabase.from('devices').update({ assigned_to: assignedTo }).eq('id', id)
+  const { data, error } = await supabase
+    .from('devices')
+    .update({ assigned_to: assignedTo })
+    .eq('id', id)
+    .select('name, type, location')
+    .single()
   unwrap(error)
+  if (assignedTo && data) {
+    notify('device_assigned', {
+      assignedToId: assignedTo,
+      deviceName: data.name,
+      type: ENUM_TO_DISPLAY.deviceType[data.type] ?? data.type,
+      location: data.location,
+    })
+  }
 }
 
 /** Owner/manager invites a user — provisions their role and emails them.
@@ -975,6 +1084,13 @@ export async function createCompany(input: {
   })
   unwrap(subErr)
 
+  notify('company_created', {
+    companyName: name,
+    plan: input.plan,
+    seats,
+    status,
+  })
+
   return companyId
 }
 
@@ -1005,4 +1121,11 @@ export async function updateCompanyBilling(
     .update({ plan_id: plan.id, seats, status: subStatus, mrr_cents: seats * (plan.price_per_seat_cents ?? 0) })
     .eq('company_id', companyId)
   unwrap(subErr)
+
+  notify('billing_updated', {
+    companyId,
+    plan: input.plan,
+    seats,
+    status: input.status,
+  })
 }
