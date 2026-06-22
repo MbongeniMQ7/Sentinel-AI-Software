@@ -4,7 +4,6 @@ import {
   Bell,
   Building2,
   CalendarDays,
-  Camera,
   ClipboardList,
   Coffee,
   Cpu,
@@ -15,7 +14,6 @@ import {
   LayoutDashboard,
   LineChart,
   Network,
-  Receipt,
   ScrollText,
   Settings,
   ShieldCheck,
@@ -45,7 +43,7 @@ export const navConfig: Record<Role, NavGroup[]> = {
       title: 'Overview',
       items: [
         { label: 'Dashboard', to: '/user/dashboard', icon: LayoutDashboard },
-        { label: 'Live Monitoring', to: '/user/monitoring', icon: Camera },
+        { label: 'Live Monitoring', to: '/user/monitoring', icon: HeartPulse },
         { label: 'Alert Center', to: '/user/alerts', icon: AlertTriangle, badge: '3' },
       ],
     },
@@ -107,14 +105,12 @@ export const navConfig: Record<Role, NavGroup[]> = {
       title: 'Financials',
       items: [
         { label: 'Revenue', to: '/owner/revenue', icon: LineChart },
-        { label: 'Subscriptions', to: '/owner/billing', icon: Receipt },
       ],
     },
     {
       title: 'Safety & Monitoring',
       items: [
         { label: 'Alerts', to: '/owner/alerts', icon: AlertTriangle },
-        { label: 'Camera Analysis', to: '/owner/camera', icon: Camera },
         { label: 'IoT Wristbands', to: '/owner/fleet', icon: Cpu },
       ],
     },

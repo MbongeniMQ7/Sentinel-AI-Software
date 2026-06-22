@@ -39,12 +39,10 @@ import { OwnerActivity } from '@/features/owner/OwnerActivity'
 import { OwnerUsers } from '@/features/owner/OwnerUsers'
 import { OwnerCompanies } from '@/features/owner/OwnerCompanies'
 import { OwnerFleet } from '@/features/owner/OwnerFleet'
-import { OwnerBilling } from '@/features/owner/OwnerBilling'
 import { OwnerRevenue } from '@/features/owner/OwnerRevenue'
 import { OwnerReports } from '@/features/owner/OwnerReports'
 import { OwnerSettings } from '@/features/owner/OwnerSettings'
 import { OwnerAlerts } from '@/features/owner/OwnerAlerts'
-import { OwnerCamera } from '@/features/owner/OwnerCamera'
 import { OwnerIssues } from '@/features/owner/OwnerIssues'
 import { OwnerAudit } from '@/features/owner/OwnerAudit'
 import { OwnerCreateManager } from '@/features/owner/OwnerCreateManager'
@@ -110,11 +108,9 @@ export default function App() {
         <Route path="users" element={<OwnerUsers />} />
         <Route path="companies" element={<OwnerCompanies />} />
         <Route path="fleet" element={<OwnerFleet />} />
-        <Route path="billing" element={<OwnerBilling />} />
         <Route path="revenue" element={<OwnerRevenue />} />
         <Route path="reports" element={<OwnerReports />} />
         <Route path="alerts" element={<OwnerAlerts />} />
-        <Route path="camera" element={<OwnerCamera />} />
         <Route path="issues" element={<OwnerIssues />} />
         <Route path="audit" element={<OwnerAudit />} />
         <Route path="create-manager" element={<OwnerCreateManager />} />
