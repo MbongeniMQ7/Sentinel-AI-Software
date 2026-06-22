@@ -9,8 +9,8 @@ export function formatNumber(n: number, opts?: Intl.NumberFormatOptions) {
   return new Intl.NumberFormat('en-US', opts).format(n)
 }
 
-export function formatCurrency(n: number, currency = 'USD') {
-  return new Intl.NumberFormat('en-US', {
+export function formatCurrency(n: number, currency = 'ZAR') {
+  return new Intl.NumberFormat('en-ZA', {
     style: 'currency',
     currency,
     maximumFractionDigits: n % 1 === 0 ? 0 : 2,

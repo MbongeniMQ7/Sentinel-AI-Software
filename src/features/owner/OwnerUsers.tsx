@@ -55,9 +55,11 @@ export function OwnerUsers() {
     setInviteErr(null)
     setInviteMsg(null)
     try {
+      // Platform owners aren't scoped to a company; everyone else is.
       const company = companies.find((c) => c.name === inviteCompany) ?? companies[0]
+      const companyId = inviteRole === 'owner' ? null : company?.id ?? null
       await inviteUser({
-        companyId: company?.id ?? null,
+        companyId,
         email: inviteEmail,
         role: inviteRole,
         invitedBy: user.id,
@@ -172,7 +174,11 @@ export function OwnerUsers() {
           <Field label="Email" required><Input type="email" placeholder="name@company.com" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} /></Field>
           <Field label="Phone"><Input placeholder="+1 (555) 0000" value={invitePhone} onChange={(e) => setInvitePhone(e.target.value)} /></Field>
           <Field label="Role" required><Select value={inviteRole} onChange={(e) => setInviteRole(e.target.value as 'employee' | 'manager' | 'owner')}><option value="employee">Employee</option><option value="manager">Manager / Admin</option><option value="owner">Owner</option></Select></Field>
-          <Field label="Company"><Select value={inviteCompany} onChange={(e) => setInviteCompany(e.target.value)}>{companies.map((c) => <option key={c.id}>{c.name}</option>)}</Select></Field>
+          {inviteRole === 'owner' ? (
+            <p className="rounded-lg bg-surface-subtle px-3 py-2 text-xs text-ink-muted">Owners have platform-wide access and aren't tied to a company. They'll sign in with this email using the OTP code we send.</p>
+          ) : (
+            <Field label="Company"><Select value={inviteCompany} onChange={(e) => setInviteCompany(e.target.value)}>{companies.map((c) => <option key={c.id}>{c.name}</option>)}</Select></Field>
+          )}
         </div>
       </Modal>
     </div>
