@@ -37,7 +37,7 @@ export function ManagerWorkforce() {
       header: 'Employee',
       render: (e) => (
         <div className="flex items-center gap-3">
-          <Avatar name={e.name} size="sm" status={e.avatarStatus} />
+          <Avatar name={e.name} src={e.avatarUrl} size="sm" status={e.avatarStatus} />
           <div>
             <p className="font-medium text-ink">{e.name}</p>
             <p className="text-xs text-ink-subtle">{e.role}</p>
@@ -94,7 +94,7 @@ export function ManagerWorkforce() {
           {filtered.map((e) => (
             <button key={e.id} onClick={() => navigate(`/admin/workforce/${e.id}`)} className="card p-5 text-left transition-shadow hover:shadow-pop">
               <div className="flex items-center gap-3">
-                <Avatar name={e.name} status={e.avatarStatus} />
+                <Avatar name={e.name} src={e.avatarUrl} status={e.avatarStatus} />
                 <div className="min-w-0">
                   <p className="truncate font-semibold text-ink">{e.name}</p>
                   <p className="truncate text-xs text-ink-subtle">{e.role} · {e.department}</p>

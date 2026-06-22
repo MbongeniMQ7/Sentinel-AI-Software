@@ -23,7 +23,7 @@ export function EmployeeProfile() {
       <div className="grid gap-5 lg:grid-cols-3">
         <Card className="lg:col-span-1">
           <CardBody className="flex flex-col items-center text-center">
-            <Avatar name={user?.name ?? 'User'} size="lg" status="online" className="scale-150" />
+            <Avatar name={user?.name ?? 'User'} src={user?.avatarUrl} size="lg" status="online" className="scale-150" />
             <h3 className="mt-6 text-lg font-semibold text-ink">{user?.name}</h3>
             <p className="text-sm text-ink-muted">{user?.title}</p>
             <Badge tone="brand" className="mt-3">Employee ID · EMP-1000</Badge>

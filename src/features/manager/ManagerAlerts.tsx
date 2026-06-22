@@ -34,7 +34,7 @@ export function ManagerAlerts() {
         const emp = employees.find((e) => e.id === a.employeeId)
         return (
           <div className="flex items-center gap-3">
-            <Avatar name={a.employee} size="sm" status={emp?.avatarStatus} />
+            <Avatar name={a.employee} src={emp?.avatarUrl} size="sm" status={emp?.avatarStatus} />
             <div><p className="font-medium text-ink">{a.employee}</p><p className="text-xs text-ink-subtle">{a.location}</p></div>
           </div>
         )

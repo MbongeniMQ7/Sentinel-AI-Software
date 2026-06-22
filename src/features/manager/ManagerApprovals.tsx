@@ -9,7 +9,9 @@ import { Badge } from '@/components/ui/Badge'
 import { EmptyState } from '@/components/shared/States'
 import { StatusBadge } from '@/components/shared/Badges'
 import { KpiCard } from '@/components/shared/KpiCard'
-import { leaveRequests, breakRequests } from '@/lib/mockData'
+import { leaveRequests, breakRequests, employees } from '@/lib/mockData'
+
+const photoByName = new Map(employees.map((e) => [e.name, e.avatarUrl]))
 
 export function ManagerApprovals() {
   const [tab, setTab] = useState('leave')
@@ -43,7 +45,7 @@ export function ManagerApprovals() {
                 const decision = decisions[l.id]
                 return (
                   <div key={l.id} className="flex flex-col gap-4 rounded-xl border border-line p-4 sm:flex-row sm:items-center">
-                    <Avatar name={l.employee} status="online" />
+                    <Avatar name={l.employee} src={photoByName.get(l.employee)} status="online" />
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="font-medium text-ink">{l.employee}</p>
@@ -73,7 +75,7 @@ export function ManagerApprovals() {
                 const decision = decisions[b.id]
                 return (
                   <div key={b.id} className="flex flex-col gap-4 rounded-xl border border-line p-4 sm:flex-row sm:items-center">
-                    <Avatar name={b.employee} status="away" />
+                    <Avatar name={b.employee} src={photoByName.get(b.employee)} status="away" />
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="font-medium text-ink">{b.employee}</p>

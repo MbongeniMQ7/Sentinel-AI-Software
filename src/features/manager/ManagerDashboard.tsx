@@ -118,7 +118,7 @@ export function ManagerDashboard() {
               const emp = employees.find((e) => e.id === a.employeeId)
               return (
                 <div key={a.id} className="flex items-center gap-3 rounded-xl px-2 py-2 hover:bg-surface-muted">
-                  <Avatar name={a.employee} size="sm" status={emp?.avatarStatus} />
+                  <Avatar name={a.employee} src={emp?.avatarUrl} size="sm" status={emp?.avatarStatus} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-ink">{a.employee}</p>
                     <p className="truncate text-xs text-ink-subtle">{a.message}</p>

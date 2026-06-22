@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, type ReactNode } from 'react'
+import { employeeAvatar, managerAvatar, ownerAvatar } from './avatars'
 
 export type Role = 'employee' | 'manager' | 'owner'
 
@@ -7,6 +8,7 @@ export interface SessionUser {
   email: string
   role: Role
   title: string
+  avatarUrl: string
 }
 
 const ROLE_PROFILES: Record<Role, SessionUser> = {
@@ -15,18 +17,21 @@ const ROLE_PROFILES: Record<Role, SessionUser> = {
     email: 'alex.mercer@sentinel.ai',
     role: 'employee',
     title: 'Line Operator · Plant 4',
+    avatarUrl: employeeAvatar,
   },
   manager: {
     name: 'Priya Nair',
     email: 'priya.nair@sentinel.ai',
     role: 'manager',
     title: 'Shift Manager · Operations',
+    avatarUrl: managerAvatar,
   },
   owner: {
     name: 'Jordan Vale',
     email: 'jordan.vale@sentinel.ai',
     role: 'owner',
     title: 'Founder & CEO',
+    avatarUrl: ownerAvatar,
   },
 }
 
