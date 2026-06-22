@@ -5,14 +5,15 @@ import { Select } from '@/components/ui/Input'
 import { Badge } from '@/components/ui/Badge'
 import { KpiCard } from '@/components/shared/KpiCard'
 import { TrendArea, TrendLine, BarSeries } from '@/components/shared/Charts'
-import { revenueTrend } from '@/lib/mockData'
+import { useRevenueTrend } from '@/lib/api'
 import { formatCurrency } from '@/lib/utils'
 
 const churnData = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'].map((m, i) => ({ month: m, churn: 2.8 - i * 0.18 + Math.random() * 0.3, retention: 96 + i * 0.4 }))
 const mrrMovement = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'].map((m, i) => ({ month: m, new: 14 + i * 2, expansion: 6 + i, churned: -(3 + (i % 3)) }))
 
 export function OwnerRevenue() {
-  const latest = revenueTrend[revenueTrend.length - 1]
+  const { data: revenueTrend } = useRevenueTrend()
+  const latest = revenueTrend[revenueTrend.length - 1] ?? { month: '', mrr: 0, arr: 0 }
 
   return (
     <div>

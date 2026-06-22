@@ -9,13 +9,16 @@ import { Badge } from '@/components/ui/Badge'
 import { EmptyState } from '@/components/shared/States'
 import { StatusBadge } from '@/components/shared/Badges'
 import { KpiCard } from '@/components/shared/KpiCard'
-import { leaveRequests, breakRequests, employees } from '@/lib/mockData'
-
-const photoByName = new Map(employees.map((e) => [e.name, e.avatarUrl]))
+import { useLeaveRequests, useBreakRequests, useEmployees } from '@/lib/api'
 
 export function ManagerApprovals() {
   const [tab, setTab] = useState('leave')
   const [decisions, setDecisions] = useState<Record<string, 'approved' | 'rejected'>>({})
+  const { data: leaveRequests } = useLeaveRequests()
+  const { data: breakRequests } = useBreakRequests()
+  const { data: employees } = useEmployees()
+
+  const photoByName = new Map(employees.map((e) => [e.name, e.avatarUrl]))
 
   const decide = (id: string, d: 'approved' | 'rejected') => setDecisions((p) => ({ ...p, [id]: d }))
 

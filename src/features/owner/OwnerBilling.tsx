@@ -7,7 +7,7 @@ import { Avatar } from '@/components/ui/Avatar'
 import { DataTable, type Column } from '@/components/ui/DataTable'
 import { KpiCard } from '@/components/shared/KpiCard'
 import { StatusBadge } from '@/components/shared/Badges'
-import { companies } from '@/lib/mockData'
+import { useCompanies } from '@/lib/api'
 import { formatCurrency } from '@/lib/utils'
 
 interface Invoice {
@@ -19,18 +19,18 @@ interface Invoice {
   status: 'paid' | 'pending' | 'failed'
 }
 
-const invoices: Invoice[] = companies.slice(0, 10).map((c, i) => ({
-  id: `INV-${7000 + i}`,
-  company: c.name,
-  amount: c.mrr,
-  plan: c.plan,
-  date: `Jun ${1 + i * 2}, 2026`,
-  status: (['paid', 'paid', 'paid', 'pending', 'failed'] as const)[i % 5],
-}))
-
 const invoiceTone = { paid: 'success', pending: 'warning', failed: 'danger' } as const
 
 export function OwnerBilling() {
+  const { data: companies } = useCompanies()
+  const invoices: Invoice[] = companies.slice(0, 10).map((c, i) => ({
+    id: `INV-${7000 + i}`,
+    company: c.name,
+    amount: c.mrr,
+    plan: c.plan,
+    date: `Jun ${1 + i * 2}, 2026`,
+    status: (['paid', 'paid', 'paid', 'pending', 'failed'] as const)[i % 5],
+  }))
   const columns: Column<Invoice>[] = [
     { key: 'id', header: 'Invoice', render: (i) => <span className="font-mono text-xs text-ink-muted">{i.id}</span> },
     {
@@ -62,7 +62,7 @@ export function OwnerBilling() {
         <KpiCard label="Collected (MTD)" value={formatCurrency(totalCollected)} icon={<DollarSign className="h-5 w-5" />} tone="success" delta={9} />
         <KpiCard label="Outstanding" value={formatCurrency(outstanding)} icon={<Receipt className="h-5 w-5" />} tone="warning" />
         <KpiCard label="Active subscriptions" value={companies.filter((c) => c.status === 'active').length} icon={<CreditCard className="h-5 w-5" />} tone="brand" />
-        <KpiCard label="Avg revenue / co." value={formatCurrency(Math.round(companies.reduce((s, c) => s + c.mrr, 0) / companies.length))} icon={<TrendingUp className="h-5 w-5" />} tone="purple" />
+        <KpiCard label="Avg revenue / co." value={formatCurrency(Math.round(companies.reduce((s, c) => s + c.mrr, 0) / Math.max(companies.length, 1)))} icon={<TrendingUp className="h-5 w-5" />} tone="purple" />
       </div>
 
       <div className="grid gap-5 lg:grid-cols-3">

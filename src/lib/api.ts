@@ -105,6 +105,7 @@ export interface TrendPoint {
   fatigue: number
   heartRate: number
   focus: number
+  [key: string]: string | number
 }
 
 // ============================================================================
@@ -429,6 +430,7 @@ export interface WeeklyAlertPoint {
   fatigue: number
   drowsiness: number
   distraction: number
+  [key: string]: string | number
 }
 
 async function fetchWeeklyAlerts(): Promise<WeeklyAlertPoint[]> {
@@ -462,6 +464,7 @@ export interface DepartmentFatiguePoint {
   department: string
   avgFatigue: number
   employees: number
+  [key: string]: string | number
 }
 
 async function fetchDepartmentFatigue(): Promise<DepartmentFatiguePoint[]> {
@@ -493,6 +496,7 @@ export interface RevenuePoint {
   month: string
   mrr: number
   arr: number
+  [key: string]: string | number
 }
 
 async function fetchRevenueTrend(): Promise<RevenuePoint[]> {

@@ -7,18 +7,19 @@ import { Input, Select } from '@/components/ui/Input'
 import { Avatar } from '@/components/ui/Avatar'
 import { DataTable, type Column } from '@/components/ui/DataTable'
 import { EmptyState } from '@/components/shared/States'
-import { auditLogs } from '@/lib/mockData'
+import { useAuditLogs, type AuditLog } from '@/lib/api'
 
-type Log = (typeof auditLogs)[number]
+type Log = AuditLog
 
 export function ManagerAudit() {
   const [query, setQuery] = useState('')
   const [action, setAction] = useState('all')
+  const { data: auditLogs } = useAuditLogs()
 
   const actions = [...new Set(auditLogs.map((l) => l.action))]
   const filtered = useMemo(
     () => auditLogs.filter((l) => (action === 'all' || l.action === action) && (!query || l.actor.toLowerCase().includes(query.toLowerCase()) || l.target.toLowerCase().includes(query.toLowerCase()))),
-    [query, action],
+    [query, action, auditLogs],
   )
 
   const columns: Column<Log>[] = [

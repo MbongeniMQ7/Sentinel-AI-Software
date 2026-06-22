@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { Field, Select } from '@/components/ui/Input'
 import { Badge } from '@/components/ui/Badge'
 import { BarSeries } from '@/components/shared/Charts'
-import { weeklyAlerts } from '@/lib/mockData'
+import { useWeeklyAlerts } from '@/lib/api'
 
 const templates = [
   { id: 'wellness', title: 'Weekly Wellness Summary', desc: 'Fatigue, focus and break compliance for the week.' },
@@ -18,6 +18,7 @@ export function EmployeeReports() {
   const [selected, setSelected] = useState('wellness')
   const [generating, setGenerating] = useState(false)
   const [ready, setReady] = useState(false)
+  const { data: weeklyAlerts } = useWeeklyAlerts()
 
   const generate = () => {
     setGenerating(true)

@@ -6,7 +6,7 @@ import { Input, Select } from '@/components/ui/Input'
 import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'
 import { EmptyState } from '@/components/shared/States'
-import { auditLogs, companies } from '@/lib/mockData'
+import { useAuditLogs, useCompanies } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
 type ActivityKind = 'company' | 'user' | 'device' | 'billing' | 'security' | 'system'
@@ -20,28 +20,34 @@ const kinds: Record<ActivityKind, { icon: typeof Activity; tone: string }> = {
   system: { icon: Settings, tone: 'bg-surface-muted text-ink-muted' },
 }
 
-const events = auditLogs.map((l, i) => {
-  const kindList: ActivityKind[] = ['company', 'user', 'device', 'billing', 'security', 'system']
-  const kind = kindList[i % kindList.length]
-  const company = companies[i % companies.length].name
-  const messages: Record<ActivityKind, string> = {
-    company: `New company onboarded: ${company}`,
-    user: `${l.actor} ${l.action}`,
-    device: `Device fleet update at ${company}`,
-    billing: `Payment received from ${company}`,
-    security: `Security policy changed by ${l.actor}`,
-    system: `System ${l.action}`,
-  }
-  return { id: l.id, kind, message: messages[kind], company, time: l.timestamp, ip: l.ip }
-})
-
 export function OwnerActivity() {
   const [query, setQuery] = useState('')
   const [kind, setKind] = useState('all')
+  const { data: auditLogs } = useAuditLogs()
+  const { data: companies } = useCompanies()
+
+  const events = useMemo(
+    () =>
+      auditLogs.map((l, i) => {
+        const kindList: ActivityKind[] = ['company', 'user', 'device', 'billing', 'security', 'system']
+        const k = kindList[i % kindList.length]
+        const company = companies.length ? companies[i % companies.length].name : '—'
+        const messages: Record<ActivityKind, string> = {
+          company: `New company onboarded: ${company}`,
+          user: `${l.actor} ${l.action}`,
+          device: `Device fleet update at ${company}`,
+          billing: `Payment received from ${company}`,
+          security: `Security policy changed by ${l.actor}`,
+          system: `System ${l.action}`,
+        }
+        return { id: l.id, kind: k, message: messages[k], company, time: l.timestamp, ip: l.ip }
+      }),
+    [auditLogs, companies],
+  )
 
   const filtered = useMemo(
     () => events.filter((e) => (kind === 'all' || e.kind === kind) && (!query || e.message.toLowerCase().includes(query.toLowerCase()))),
-    [query, kind],
+    [query, kind, events],
   )
 
   return (

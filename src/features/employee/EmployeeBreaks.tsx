@@ -7,7 +7,7 @@ import { Modal } from '@/components/ui/Modal'
 import { Field, Select, Textarea } from '@/components/ui/Input'
 import { DataTable, type Column } from '@/components/ui/DataTable'
 import { StatusBadge } from '@/components/shared/Badges'
-import { breakRequests, type BreakRequest } from '@/lib/mockData'
+import { useBreakRequests, type BreakRequest } from '@/lib/api'
 
 const columns: Column<BreakRequest>[] = [
   { key: 'id', header: 'ID', render: (r) => <span className="font-mono text-xs text-ink-muted">{r.id}</span> },
@@ -21,6 +21,7 @@ export function EmployeeBreaks() {
   const [open, setOpen] = useState(false)
   const [running, setRunning] = useState(false)
   const [seconds, setSeconds] = useState(15 * 60)
+  const { data: breakRequests } = useBreakRequests()
 
   useEffect(() => {
     if (!running) return

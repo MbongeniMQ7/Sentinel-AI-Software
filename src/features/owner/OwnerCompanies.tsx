@@ -11,7 +11,7 @@ import { EmptyState } from '@/components/shared/States'
 import { StatusBadge } from '@/components/shared/Badges'
 import { KpiCard } from '@/components/shared/KpiCard'
 import { TrendArea } from '@/components/shared/Charts'
-import { companies, revenueTrend, type Company } from '@/lib/mockData'
+import { useCompanies, useRevenueTrend, type Company } from '@/lib/api'
 import { formatCurrency } from '@/lib/utils'
 
 const planTones = { Starter: 'info', Growth: 'brand', Enterprise: 'purple' } as const
@@ -20,10 +20,12 @@ export function OwnerCompanies() {
   const [query, setQuery] = useState('')
   const [plan, setPlan] = useState('all')
   const [selected, setSelected] = useState<Company | null>(null)
+  const { data: companies } = useCompanies()
+  const { data: revenueTrend } = useRevenueTrend()
 
   const filtered = useMemo(
     () => companies.filter((c) => (plan === 'all' || c.plan === plan) && (!query || c.name.toLowerCase().includes(query.toLowerCase()))),
-    [query, plan],
+    [query, plan, companies],
   )
 
   return (

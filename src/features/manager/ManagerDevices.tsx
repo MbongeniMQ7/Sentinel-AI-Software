@@ -12,17 +12,19 @@ import { DataTable, type Column } from '@/components/ui/DataTable'
 import { EmptyState } from '@/components/shared/States'
 import { StatusBadge } from '@/components/shared/Badges'
 import { KpiCard } from '@/components/shared/KpiCard'
-import { devices, employees, type DeviceItem } from '@/lib/mockData'
+import { useDevices, useEmployees, type DeviceItem } from '@/lib/api'
 
 export function ManagerDevices() {
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState('all')
   const [selected, setSelected] = useState<DeviceItem | null>(null)
   const [addOpen, setAddOpen] = useState(false)
+  const { data: devices } = useDevices()
+  const { data: employees } = useEmployees()
 
   const filtered = useMemo(
     () => devices.filter((d) => (status === 'all' || d.status === status) && (!query || d.name.toLowerCase().includes(query.toLowerCase()) || d.id.toLowerCase().includes(query.toLowerCase()))),
-    [query, status],
+    [query, status, devices],
   )
 
   const columns: Column<DeviceItem>[] = [

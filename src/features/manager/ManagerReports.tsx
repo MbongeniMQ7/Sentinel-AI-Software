@@ -1,9 +1,10 @@
 import { PageHeader } from '@/components/shared/PageHeader'
 import { ReportsBuilder } from '@/components/shared/ReportsBuilder'
 import { BarSeries } from '@/components/shared/Charts'
-import { departmentFatigue } from '@/lib/mockData'
+import { useDepartmentFatigue } from '@/lib/api'
 
 export function ManagerReports() {
+  const { data: departmentFatigue } = useDepartmentFatigue()
   return (
     <div>
       <PageHeader title="Reports" description="Generate team performance and compliance reports." />

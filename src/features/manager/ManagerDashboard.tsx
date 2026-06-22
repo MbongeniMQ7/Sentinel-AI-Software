@@ -7,7 +7,7 @@ import { Avatar } from '@/components/ui/Avatar'
 import { KpiCard } from '@/components/shared/KpiCard'
 import { TrendArea, Donut } from '@/components/shared/Charts'
 import { RiskBadge } from '@/components/shared/Badges'
-import { employees, alerts, fatigueTrend, departmentFatigue } from '@/lib/mockData'
+import { useEmployees, useAlerts, useFatigueTrend, useDepartmentFatigue } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
 function heatColor(v: number) {
@@ -19,6 +19,10 @@ function heatColor(v: number) {
 }
 
 export function ManagerDashboard() {
+  const { data: employees } = useEmployees()
+  const { data: alerts } = useAlerts()
+  const { data: fatigueTrend } = useFatigueTrend()
+  const { data: departmentFatigue } = useDepartmentFatigue()
   const liveAlerts = alerts.slice(0, 6)
   const riskDist = [
     { name: 'Low', value: employees.filter((e) => e.riskLevel === 'low').length, color: '#10b981' },

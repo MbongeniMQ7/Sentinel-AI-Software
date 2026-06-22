@@ -5,13 +5,14 @@ import { Card, CardHeader, CardBody } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, Select, Textarea } from '@/components/ui/Input'
 import { Badge } from '@/components/ui/Badge'
-import { faqs } from '@/lib/mockData'
+import { useFaqs } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
 export function EmployeeSupport() {
   const [openFaq, setOpenFaq] = useState<number | null>(0)
   const [query, setQuery] = useState('')
   const [sent, setSent] = useState(false)
+  const { data: faqs } = useFaqs()
 
   const filtered = faqs.filter((f) => f.q.toLowerCase().includes(query.toLowerCase()))
 

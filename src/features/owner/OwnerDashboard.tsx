@@ -7,10 +7,12 @@ import { Badge } from '@/components/ui/Badge'
 import { KpiCard } from '@/components/shared/KpiCard'
 import { TrendArea, Donut, BarSeries } from '@/components/shared/Charts'
 import { StatusBadge } from '@/components/shared/Badges'
-import { companies, revenueTrend } from '@/lib/mockData'
+import { useCompanies, useRevenueTrend } from '@/lib/api'
 import { formatCompact, formatCurrency } from '@/lib/utils'
 
 export function OwnerDashboard() {
+  const { data: companies } = useCompanies()
+  const { data: revenueTrend } = useRevenueTrend()
   const totalMrr = companies.reduce((s, c) => s + c.mrr, 0)
   const totalUsers = companies.reduce((s, c) => s + c.activeUsers, 0)
   const totalDevices = companies.reduce((s, c) => s + c.devices, 0)

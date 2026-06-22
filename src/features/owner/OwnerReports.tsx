@@ -1,9 +1,10 @@
 import { PageHeader } from '@/components/shared/PageHeader'
 import { ReportsBuilder } from '@/components/shared/ReportsBuilder'
 import { TrendArea } from '@/components/shared/Charts'
-import { revenueTrend } from '@/lib/mockData'
+import { useRevenueTrend } from '@/lib/api'
 
 export function OwnerReports() {
+  const { data: revenueTrend } = useRevenueTrend()
   return (
     <div>
       <PageHeader title="Reports" description="Generate platform, compliance and revenue reports." />
