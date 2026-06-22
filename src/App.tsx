@@ -43,6 +43,11 @@ import { OwnerBilling } from '@/features/owner/OwnerBilling'
 import { OwnerRevenue } from '@/features/owner/OwnerRevenue'
 import { OwnerReports } from '@/features/owner/OwnerReports'
 import { OwnerSettings } from '@/features/owner/OwnerSettings'
+import { OwnerAlerts } from '@/features/owner/OwnerAlerts'
+import { OwnerCamera } from '@/features/owner/OwnerCamera'
+import { OwnerIssues } from '@/features/owner/OwnerIssues'
+import { OwnerAudit } from '@/features/owner/OwnerAudit'
+import { OwnerCreateManager } from '@/features/owner/OwnerCreateManager'
 
 function RequireRole({ role }: { role: Role }) {
   const { user, loading } = useAuth()
@@ -108,6 +113,11 @@ export default function App() {
         <Route path="billing" element={<OwnerBilling />} />
         <Route path="revenue" element={<OwnerRevenue />} />
         <Route path="reports" element={<OwnerReports />} />
+        <Route path="alerts" element={<OwnerAlerts />} />
+        <Route path="camera" element={<OwnerCamera />} />
+        <Route path="issues" element={<OwnerIssues />} />
+        <Route path="audit" element={<OwnerAudit />} />
+        <Route path="create-manager" element={<OwnerCreateManager />} />
         <Route path="settings" element={<OwnerSettings />} />
       </Route>
 
