@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Bell, KeyRound, Monitor, Moon, Palette, Shield, Smartphone, Sun } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Card, CardHeader, CardBody, CardFooter } from '@/components/ui/Card'
@@ -6,11 +6,49 @@ import { Button } from '@/components/ui/Button'
 import { Switch } from '@/components/ui/Switch'
 import { Field, Input } from '@/components/ui/Input'
 import { useTheme } from '@/lib/theme'
+import { useAuth } from '@/lib/auth'
+import { useNotificationPreferences, saveNotificationPreferences } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
 export function EmployeeSettings() {
   const { theme, setTheme } = useTheme()
-  const [notif, setNotif] = useState({ fatigue: true, breaks: true, leave: false, weekly: true, sound: true })
+  const { user } = useAuth()
+  const { data: prefs } = useNotificationPreferences(user?.id)
+  const [notif, setNotif] = useState({ fatigue: true, breaks: true, weekly: true, email: true, push: true, sms: false })
+  const [saving, setSaving] = useState(false)
+  const [status, setStatus] = useState<string | null>(null)
+
+  useEffect(() => {
+    setNotif({
+      fatigue: prefs.fatigueAlerts,
+      breaks: prefs.breakReminders,
+      weekly: prefs.shiftSummaries,
+      email: prefs.emailEnabled,
+      push: prefs.pushEnabled,
+      sms: prefs.smsEnabled,
+    })
+  }, [prefs])
+
+  const saveNotif = async () => {
+    if (!user) return
+    setSaving(true)
+    setStatus(null)
+    try {
+      await saveNotificationPreferences(user.id, {
+        fatigueAlerts: notif.fatigue,
+        breakReminders: notif.breaks,
+        shiftSummaries: notif.weekly,
+        emailEnabled: notif.email,
+        pushEnabled: notif.push,
+        smsEnabled: notif.sms,
+      })
+      setStatus('Saved')
+    } catch (e) {
+      setStatus(e instanceof Error ? e.message : 'Could not save')
+    } finally {
+      setSaving(false)
+    }
+  }
 
   const themes = [
     { id: 'light', label: 'Light', icon: Sun },
@@ -28,10 +66,15 @@ export function EmployeeSettings() {
           <CardBody className="space-y-4">
             <Switch label="Fatigue alerts" description="High-risk fatigue and drowsiness warnings" checked={notif.fatigue} onChange={(v) => setNotif({ ...notif, fatigue: v })} />
             <Switch label="Break reminders" description="Nudges when a break is due" checked={notif.breaks} onChange={(v) => setNotif({ ...notif, breaks: v })} />
-            <Switch label="Leave updates" description="Status changes on leave requests" checked={notif.leave} onChange={(v) => setNotif({ ...notif, leave: v })} />
-            <Switch label="Weekly summary" description="Your wellness report every Monday" checked={notif.weekly} onChange={(v) => setNotif({ ...notif, weekly: v })} />
-            <Switch label="Sound alerts" description="Play a sound for critical alerts" checked={notif.sound} onChange={(v) => setNotif({ ...notif, sound: v })} />
+            <Switch label="Shift summaries" description="Your wellness report every shift" checked={notif.weekly} onChange={(v) => setNotif({ ...notif, weekly: v })} />
+            <Switch label="Email notifications" description="Receive alerts by email" checked={notif.email} onChange={(v) => setNotif({ ...notif, email: v })} />
+            <Switch label="Push notifications" description="Browser and mobile push" checked={notif.push} onChange={(v) => setNotif({ ...notif, push: v })} />
+            <Switch label="SMS alerts" description="Text messages for critical alerts" checked={notif.sms} onChange={(v) => setNotif({ ...notif, sms: v })} />
           </CardBody>
+          <CardFooter className="justify-end">
+            {status && <span className="mr-auto text-sm text-ink-muted">{status}</span>}
+            <Button onClick={saveNotif} disabled={saving}>{saving ? 'Saving…' : 'Save preferences'}</Button>
+          </CardFooter>
         </Card>
 
         <Card>

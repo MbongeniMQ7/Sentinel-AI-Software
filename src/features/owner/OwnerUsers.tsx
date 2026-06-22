@@ -12,7 +12,8 @@ import { DataTable, type Column } from '@/components/ui/DataTable'
 import { EmptyState } from '@/components/shared/States'
 import { StatusBadge } from '@/components/shared/Badges'
 import { KpiCard } from '@/components/shared/KpiCard'
-import { useEmployees, useCompanies } from '@/lib/api'
+import { useEmployees, useCompanies, inviteUser } from '@/lib/api'
+import { useAuth } from '@/lib/auth'
 
 interface GlobalUser {
   id: string
@@ -30,8 +31,43 @@ export function OwnerUsers() {
   const [query, setQuery] = useState('')
   const [role, setRole] = useState('all')
   const [addOpen, setAddOpen] = useState(false)
+  const { user } = useAuth()
   const { data: employees } = useEmployees()
   const { data: companies } = useCompanies()
+
+  // Invite form
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteRole, setInviteRole] = useState<'employee' | 'manager' | 'owner'>('employee')
+  const [inviteCompany, setInviteCompany] = useState('')
+  const [sending, setSending] = useState(false)
+  const [inviteMsg, setInviteMsg] = useState<string | null>(null)
+  const [inviteErr, setInviteErr] = useState<string | null>(null)
+
+  const sendInvite = async () => {
+    if (!user) return
+    if (!inviteEmail.trim()) {
+      setInviteErr('Email is required.')
+      return
+    }
+    setSending(true)
+    setInviteErr(null)
+    setInviteMsg(null)
+    try {
+      const company = companies.find((c) => c.name === inviteCompany) ?? companies[0]
+      await inviteUser({
+        companyId: company?.id ?? null,
+        email: inviteEmail,
+        role: inviteRole,
+        invitedBy: user.id,
+      })
+      setInviteMsg(`Invitation created for ${inviteEmail}.`)
+      setInviteEmail('')
+    } catch (e) {
+      setInviteErr(e instanceof Error ? e.message : 'Could not create invite')
+    } finally {
+      setSending(false)
+    }
+  }
 
   const users: GlobalUser[] = useMemo(
     () =>
@@ -121,12 +157,14 @@ export function OwnerUsers() {
         onClose={() => setAddOpen(false)}
         title="Invite user"
         description="Send an invitation to join the platform."
-        footer={<><Button variant="outline" onClick={() => setAddOpen(false)}>Cancel</Button><Button onClick={() => setAddOpen(false)}>Send invite</Button></>}
+        footer={<><Button variant="outline" onClick={() => setAddOpen(false)} disabled={sending}>Close</Button><Button onClick={sendInvite} disabled={sending}>{sending ? 'Sending…' : 'Send invite'}</Button></>}
       >
         <div className="space-y-4">
-          <Field label="Email" required><Input type="email" placeholder="name@company.com" /></Field>
-          <Field label="Role" required><Select><option>Employee</option><option>Manager</option><option>Admin</option><option>Owner</option></Select></Field>
-          <Field label="Company"><Select>{companies.map((c) => <option key={c.id}>{c.name}</option>)}</Select></Field>
+          {inviteErr && <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-600 dark:bg-rose-950/40">{inviteErr}</p>}
+          {inviteMsg && <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-600 dark:bg-emerald-950/40">{inviteMsg}</p>}
+          <Field label="Email" required><Input type="email" placeholder="name@company.com" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} /></Field>
+          <Field label="Role" required><Select value={inviteRole} onChange={(e) => setInviteRole(e.target.value as 'employee' | 'manager' | 'owner')}><option value="employee">Employee</option><option value="manager">Manager</option><option value="owner">Owner</option></Select></Field>
+          <Field label="Company"><Select value={inviteCompany} onChange={(e) => setInviteCompany(e.target.value)}>{companies.map((c) => <option key={c.id}>{c.name}</option>)}</Select></Field>
         </div>
       </Modal>
     </div>

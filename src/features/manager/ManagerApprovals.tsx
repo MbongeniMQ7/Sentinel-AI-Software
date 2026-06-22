@@ -9,18 +9,43 @@ import { Badge } from '@/components/ui/Badge'
 import { EmptyState } from '@/components/shared/States'
 import { StatusBadge } from '@/components/shared/Badges'
 import { KpiCard } from '@/components/shared/KpiCard'
-import { useLeaveRequests, useBreakRequests, useEmployees } from '@/lib/api'
+import { useLeaveRequests, useBreakRequests, useEmployees, reviewLeaveRequest, reviewBreakRequest } from '@/lib/api'
+import { useAuth } from '@/lib/auth'
 
 export function ManagerApprovals() {
   const [tab, setTab] = useState('leave')
   const [decisions, setDecisions] = useState<Record<string, 'approved' | 'rejected'>>({})
-  const { data: leaveRequests } = useLeaveRequests()
-  const { data: breakRequests } = useBreakRequests()
+  const [busy, setBusy] = useState<string | null>(null)
+  const { user } = useAuth()
+  const { data: leaveRequests, refetch: refetchLeave } = useLeaveRequests()
+  const { data: breakRequests, refetch: refetchBreaks } = useBreakRequests()
   const { data: employees } = useEmployees()
 
   const photoByName = new Map(employees.map((e) => [e.name, e.avatarUrl]))
 
-  const decide = (id: string, d: 'approved' | 'rejected') => setDecisions((p) => ({ ...p, [id]: d }))
+  const decideLeave = async (id: string, d: 'approved' | 'rejected') => {
+    if (!user) return
+    setBusy(id)
+    try {
+      await reviewLeaveRequest(id, d, user.id)
+      setDecisions((p) => ({ ...p, [id]: d }))
+      refetchLeave()
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const decideBreak = async (id: string, d: 'approved' | 'rejected') => {
+    if (!user) return
+    setBusy(id)
+    try {
+      await reviewBreakRequest(id, d, user.id)
+      setDecisions((p) => ({ ...p, [id]: d }))
+      refetchBreaks()
+    } finally {
+      setBusy(null)
+    }
+  }
 
   const pendingLeave = leaveRequests.filter((l) => l.status === 'pending')
   const pendingBreaks = breakRequests.filter((b) => b.status === 'pending')
@@ -61,8 +86,8 @@ export function ManagerApprovals() {
                       <StatusBadge status={decision} />
                     ) : (
                       <div className="flex gap-2">
-                        <Button variant="outline" size="sm" onClick={() => decide(l.id, 'rejected')}><X className="h-4 w-4" /> Reject</Button>
-                        <Button size="sm" onClick={() => decide(l.id, 'approved')}><Check className="h-4 w-4" /> Approve</Button>
+                        <Button variant="outline" size="sm" disabled={busy === l.id} onClick={() => decideLeave(l.id, 'rejected')}><X className="h-4 w-4" /> Reject</Button>
+                        <Button size="sm" disabled={busy === l.id} onClick={() => decideLeave(l.id, 'approved')}><Check className="h-4 w-4" /> Approve</Button>
                       </div>
                     )}
                   </div>
@@ -90,8 +115,8 @@ export function ManagerApprovals() {
                       <StatusBadge status={decision} />
                     ) : (
                       <div className="flex gap-2">
-                        <Button variant="outline" size="sm" onClick={() => decide(b.id, 'rejected')}><X className="h-4 w-4" /> Reject</Button>
-                        <Button size="sm" onClick={() => decide(b.id, 'approved')}><Check className="h-4 w-4" /> Approve</Button>
+                        <Button variant="outline" size="sm" disabled={busy === b.id} onClick={() => decideBreak(b.id, 'rejected')}><X className="h-4 w-4" /> Reject</Button>
+                        <Button size="sm" disabled={busy === b.id} onClick={() => decideBreak(b.id, 'approved')}><Check className="h-4 w-4" /> Approve</Button>
                       </div>
                     )}
                   </div>

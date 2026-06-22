@@ -5,7 +5,8 @@ import { Card, CardHeader, CardBody } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, Select, Textarea } from '@/components/ui/Input'
 import { Badge } from '@/components/ui/Badge'
-import { useFaqs } from '@/lib/api'
+import { useFaqs, submitSupportTicket } from '@/lib/api'
+import { useAuth } from '@/lib/auth'
 import { cn } from '@/lib/utils'
 
 export function EmployeeSupport() {
@@ -13,6 +14,40 @@ export function EmployeeSupport() {
   const [query, setQuery] = useState('')
   const [sent, setSent] = useState(false)
   const { data: faqs } = useFaqs()
+  const { user } = useAuth()
+  const [subject, setSubject] = useState('')
+  const [category, setCategory] = useState('technical')
+  const [priority, setPriority] = useState<'low' | 'medium' | 'high' | 'urgent'>('medium')
+  const [message, setMessage] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const submit = async () => {
+    if (!user) return
+    if (!subject.trim() || !message.trim()) {
+      setError('Subject and message are required.')
+      return
+    }
+    setSubmitting(true)
+    setError(null)
+    try {
+      await submitSupportTicket({
+        openedBy: user.id,
+        companyId: user.companyId,
+        subject,
+        category,
+        priority,
+        message,
+      })
+      setSubject('')
+      setMessage('')
+      setSent(true)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not submit ticket')
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   const filtered = faqs.filter((f) => f.q.toLowerCase().includes(query.toLowerCase()))
 
@@ -63,15 +98,16 @@ export function EmployeeSupport() {
           <CardBody className="space-y-4">
             {sent ? (
               <div className="rounded-xl bg-emerald-50 p-4 text-center dark:bg-emerald-950/30">
-                <Badge tone="success" className="mb-2">Ticket #4821 created</Badge>
+                <Badge tone="success" className="mb-2">Ticket created</Badge>
                 <p className="text-sm text-ink-muted">Thanks! Our team will reply to your email shortly.</p>
                 <Button variant="outline" size="sm" className="mt-3" onClick={() => setSent(false)}>Submit another</Button>
               </div>
             ) : (
               <>
-                <Field label="Subject" required><Input placeholder="Briefly describe the issue" /></Field>
+                {error && <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-600 dark:bg-rose-950/40">{error}</p>}
+                <Field label="Subject" required><Input placeholder="Briefly describe the issue" value={subject} onChange={(e) => setSubject(e.target.value)} /></Field>
                 <Field label="Category">
-                  <Select defaultValue="technical">
+                  <Select value={category} onChange={(e) => setCategory(e.target.value)}>
                     <option value="technical">Technical issue</option>
                     <option value="account">Account & access</option>
                     <option value="device">Device & monitoring</option>
@@ -79,10 +115,10 @@ export function EmployeeSupport() {
                   </Select>
                 </Field>
                 <Field label="Priority">
-                  <Select defaultValue="normal"><option value="low">Low</option><option value="normal">Normal</option><option value="high">High</option><option value="urgent">Urgent</option></Select>
+                  <Select value={priority} onChange={(e) => setPriority(e.target.value as 'low' | 'medium' | 'high' | 'urgent')}><option value="low">Low</option><option value="medium">Normal</option><option value="high">High</option><option value="urgent">Urgent</option></Select>
                 </Field>
-                <Field label="Message" required><Textarea rows={4} placeholder="Tell us what's happening…" /></Field>
-                <Button className="w-full" onClick={() => setSent(true)}><Send className="h-4 w-4" /> Submit ticket</Button>
+                <Field label="Message" required><Textarea rows={4} placeholder="Tell us what's happening…" value={message} onChange={(e) => setMessage(e.target.value)} /></Field>
+                <Button className="w-full" onClick={submit} disabled={submitting}><Send className="h-4 w-4" /> {submitting ? 'Submitting…' : 'Submit ticket'}</Button>
               </>
             )}
           </CardBody>

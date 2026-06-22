@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { supabase } from './supabase'
 import { workerPhoto } from './avatars'
 
@@ -147,10 +147,17 @@ export interface QueryState<T> {
   data: T
   loading: boolean
   error: string | null
+  refetch: () => void
 }
 
 function useQuery<T>(fetcher: () => Promise<T>, fallback: T, deps: unknown[] = []): QueryState<T> {
-  const [state, setState] = useState<QueryState<T>>({ data: fallback, loading: true, error: null })
+  const [state, setState] = useState<{ data: T; loading: boolean; error: string | null }>({
+    data: fallback,
+    loading: true,
+    error: null,
+  })
+  const [nonce, setNonce] = useState(0)
+  const refetch = useCallback(() => setNonce((n) => n + 1), [])
 
   useEffect(() => {
     let active = true
@@ -164,9 +171,9 @@ function useQuery<T>(fetcher: () => Promise<T>, fallback: T, deps: unknown[] = [
       active = false
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps)
+  }, [...deps, nonce])
 
-  return state
+  return { ...state, refetch }
 }
 
 // ============================================================================
@@ -532,4 +539,254 @@ async function fetchRevenueTrend(): Promise<RevenuePoint[]> {
 
 export function useRevenueTrend() {
   return useQuery<RevenuePoint[]>(fetchRevenueTrend, [])
+}
+
+// ============================================================================
+// Mutations — write back to Supabase (RLS enforces who may do what)
+// ============================================================================
+
+const DISPLAY_TO_ENUM = {
+  leaveType: { Annual: 'annual', Sick: 'sick', Personal: 'personal', Emergency: 'emergency' } as Record<string, string>,
+  deviceType: { Camera: 'camera', 'Wearable Band': 'wearable_band', 'Edge Gateway': 'edge_gateway', 'Helmet Sensor': 'helmet_sensor' } as Record<string, string>,
+}
+
+function unwrap(error: { message: string } | null) {
+  if (error) throw new Error(error.message)
+}
+
+/** Employee submits a new leave request. */
+export async function submitLeaveRequest(input: {
+  employeeId: string
+  companyId: string
+  type: string
+  startDate: string
+  endDate: string
+  reason: string
+}): Promise<void> {
+  const { error } = await supabase.from('leave_requests').insert({
+    employee_id: input.employeeId,
+    company_id: input.companyId,
+    type: DISPLAY_TO_ENUM.leaveType[input.type] ?? input.type.toLowerCase(),
+    start_date: input.startDate,
+    end_date: input.endDate,
+    reason: input.reason || null,
+    status: 'pending',
+  })
+  unwrap(error)
+}
+
+/** Employee submits a new break request. */
+export async function submitBreakRequest(input: {
+  employeeId: string
+  companyId: string
+  reason: string
+  durationMin: number
+}): Promise<void> {
+  const { error } = await supabase.from('break_requests').insert({
+    employee_id: input.employeeId,
+    company_id: input.companyId,
+    reason: input.reason,
+    duration_min: input.durationMin,
+    status: 'pending',
+  })
+  unwrap(error)
+}
+
+/** Manager/owner approves or rejects a leave request. */
+export async function reviewLeaveRequest(id: string, status: 'approved' | 'rejected', reviewerId: string): Promise<void> {
+  const { error } = await supabase
+    .from('leave_requests')
+    .update({ status, reviewed_by: reviewerId })
+    .eq('id', id)
+  unwrap(error)
+}
+
+/** Manager/owner approves or rejects a break request. */
+export async function reviewBreakRequest(id: string, status: 'approved' | 'rejected', reviewerId: string): Promise<void> {
+  const { error } = await supabase
+    .from('break_requests')
+    .update({ status, reviewed_by: reviewerId })
+    .eq('id', id)
+  unwrap(error)
+}
+
+/** Employee acknowledges their own alert. */
+export async function acknowledgeAlert(id: string): Promise<void> {
+  const { error } = await supabase.from('alerts').update({ status: 'acknowledged' }).eq('id', id)
+  unwrap(error)
+  await supabase.from('alert_events').insert({ alert_id: id, to_status: 'acknowledged', note: 'Acknowledged by employee' })
+}
+
+/** Manager/owner transitions an alert (escalate / resolve) and logs the event. */
+export async function updateAlertStatus(id: string, status: AlertStatus, note?: string): Promise<void> {
+  const { error } = await supabase.from('alerts').update({ status }).eq('id', id)
+  unwrap(error)
+  await supabase.from('alert_events').insert({ alert_id: id, to_status: status, note: note ?? `Marked ${status}` })
+}
+
+/** Update the signed-in user's own profile fields. */
+export async function saveProfile(input: { id: string; fullName?: string; phone?: string; title?: string }): Promise<void> {
+  const patch: Record<string, unknown> = { updated_at: new Date().toISOString() }
+  if (input.fullName !== undefined) patch.full_name = input.fullName
+  if (input.phone !== undefined) patch.phone = input.phone
+  if (input.title !== undefined) patch.title = input.title
+  const { error } = await supabase.from('profiles').update(patch).eq('id', input.id)
+  unwrap(error)
+}
+
+/** Update an employee's monitoring mode (self or manager). */
+export async function saveEmployeeMonitoring(profileId: string, monitoring: 'camera' | 'wearable' | 'hybrid'): Promise<void> {
+  const { error } = await supabase
+    .from('employee_profiles')
+    .update({ monitoring, updated_at: new Date().toISOString() })
+    .eq('profile_id', profileId)
+  unwrap(error)
+}
+
+export interface NotificationPrefsInput {
+  fatigueAlerts?: boolean
+  breakReminders?: boolean
+  shiftSummaries?: boolean
+  emailEnabled?: boolean
+  pushEnabled?: boolean
+  smsEnabled?: boolean
+}
+
+/** Upsert the signed-in user's notification preferences. */
+export async function saveNotificationPreferences(profileId: string, prefs: NotificationPrefsInput): Promise<void> {
+  const { error } = await supabase.from('notification_preferences').upsert(
+    {
+      profile_id: profileId,
+      fatigue_alerts: prefs.fatigueAlerts,
+      break_reminders: prefs.breakReminders,
+      shift_summaries: prefs.shiftSummaries,
+      email_enabled: prefs.emailEnabled,
+      push_enabled: prefs.pushEnabled,
+      sms_enabled: prefs.smsEnabled,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: 'profile_id' },
+  )
+  unwrap(error)
+}
+
+/** Load the signed-in user's notification preferences (defaults when none set). */
+async function fetchNotificationPreferences(profileId?: string): Promise<Required<NotificationPrefsInput>> {
+  const defaults = {
+    fatigueAlerts: true,
+    breakReminders: true,
+    shiftSummaries: true,
+    emailEnabled: true,
+    pushEnabled: true,
+    smsEnabled: false,
+  }
+  if (!profileId) return defaults
+  const { data } = await supabase
+    .from('notification_preferences')
+    .select('*')
+    .eq('profile_id', profileId)
+    .maybeSingle()
+  if (!data) return defaults
+  return {
+    fatigueAlerts: data.fatigue_alerts,
+    breakReminders: data.break_reminders,
+    shiftSummaries: data.shift_summaries,
+    emailEnabled: data.email_enabled,
+    pushEnabled: data.push_enabled,
+    smsEnabled: data.sms_enabled,
+  }
+}
+
+export function useNotificationPreferences(profileId?: string) {
+  return useQuery<Required<NotificationPrefsInput>>(
+    () => fetchNotificationPreferences(profileId),
+    {
+      fatigueAlerts: true,
+      breakReminders: true,
+      shiftSummaries: true,
+      emailEnabled: true,
+      pushEnabled: true,
+      smsEnabled: false,
+    },
+    [profileId],
+  )
+}
+
+/** Employee opens a support ticket (creates ticket + first message). */
+export async function submitSupportTicket(input: {
+  openedBy: string
+  companyId: string | null
+  subject: string
+  category: string
+  priority: 'low' | 'medium' | 'high' | 'urgent'
+  message: string
+}): Promise<void> {
+  const number = `TKT-${Date.now().toString().slice(-6)}`
+  const { data, error } = await supabase
+    .from('support_tickets')
+    .insert({
+      number,
+      company_id: input.companyId,
+      opened_by: input.openedBy,
+      subject: input.subject,
+      category: input.category,
+      priority: input.priority,
+      status: 'open',
+    })
+    .select('id')
+    .single()
+  unwrap(error)
+  if (data && input.message) {
+    await supabase.from('ticket_messages').insert({
+      ticket_id: data.id,
+      author_id: input.openedBy,
+      body: input.message,
+    })
+  }
+}
+
+/** Manager/owner adds a device to the fleet. */
+export async function addDevice(input: {
+  companyId: string
+  name: string
+  type: string
+  location: string
+  assignedTo?: string | null
+}): Promise<void> {
+  const { error } = await supabase.from('devices').insert({
+    company_id: input.companyId,
+    name: input.name,
+    type: DISPLAY_TO_ENUM.deviceType[input.type] ?? input.type,
+    status: 'offline',
+    location: input.location || null,
+    assigned_to: input.assignedTo || null,
+  })
+  unwrap(error)
+}
+
+/** Manager/owner reassigns a device to an employee (or unassigns when null). */
+export async function reassignDevice(id: string, assignedTo: string | null): Promise<void> {
+  const { error } = await supabase.from('devices').update({ assigned_to: assignedTo }).eq('id', id)
+  unwrap(error)
+}
+
+/** Manager/owner invites a user to join a company. */
+export async function inviteUser(input: {
+  companyId: string | null
+  email: string
+  role: 'employee' | 'manager' | 'owner'
+  invitedBy: string
+}): Promise<void> {
+  const token =
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : Math.random().toString(36).slice(2) + Date.now().toString(36)
+  const { error } = await supabase.from('invites').insert({
+    company_id: input.companyId,
+    email: input.email,
+    role: input.role,
+    invited_by: input.invitedBy,
+    token,
+  })
+  unwrap(error)
 }

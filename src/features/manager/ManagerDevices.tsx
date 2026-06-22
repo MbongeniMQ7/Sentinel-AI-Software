@@ -12,15 +12,74 @@ import { DataTable, type Column } from '@/components/ui/DataTable'
 import { EmptyState } from '@/components/shared/States'
 import { StatusBadge } from '@/components/shared/Badges'
 import { KpiCard } from '@/components/shared/KpiCard'
-import { useDevices, useEmployees, type DeviceItem } from '@/lib/api'
+import { useDevices, useEmployees, addDevice, reassignDevice, type DeviceItem } from '@/lib/api'
+import { useAuth } from '@/lib/auth'
 
 export function ManagerDevices() {
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState('all')
   const [selected, setSelected] = useState<DeviceItem | null>(null)
   const [addOpen, setAddOpen] = useState(false)
-  const { data: devices } = useDevices()
+  const { user } = useAuth()
+  const { data: devices, refetch } = useDevices()
   const { data: employees } = useEmployees()
+
+  // Add-device form
+  const [name, setName] = useState('')
+  const [type, setType] = useState('Camera')
+  const [assignName, setAssignName] = useState('')
+  const [location, setLocation] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  // Drawer reassignment
+  const [reassignName, setReassignName] = useState('')
+  const [reassigning, setReassigning] = useState(false)
+
+  const openDevice = (d: DeviceItem) => {
+    setSelected(d)
+    setReassignName(d.assignedTo ?? '')
+  }
+
+  const submitDevice = async () => {
+    if (!user?.companyId) {
+      setError('Your account is not linked to a company.')
+      return
+    }
+    if (!name.trim()) {
+      setError('Device name is required.')
+      return
+    }
+    setSaving(true)
+    setError(null)
+    try {
+      const assignee = employees.find((e) => e.name === assignName)
+      await addDevice({ companyId: user.companyId, name, type, location, assignedTo: assignee?.id ?? null })
+      setAddOpen(false)
+      setName('')
+      setType('Camera')
+      setAssignName('')
+      setLocation('')
+      refetch()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not add device')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const applyReassign = async () => {
+    if (!selected) return
+    setReassigning(true)
+    try {
+      const assignee = employees.find((e) => e.name === reassignName)
+      await reassignDevice(selected.id, assignee?.id ?? null)
+      setSelected(null)
+      refetch()
+    } finally {
+      setReassigning(false)
+    }
+  }
 
   const filtered = useMemo(
     () => devices.filter((d) => (status === 'all' || d.status === status) && (!query || d.name.toLowerCase().includes(query.toLowerCase()) || d.id.toLowerCase().includes(query.toLowerCase()))),
@@ -84,7 +143,7 @@ export function ManagerDevices() {
           {filtered.length === 0 ? (
             <EmptyState icon={<Cpu className="h-6 w-6" />} title="No devices found" description="Try a different search or add a new device." action={<Button size="sm" onClick={() => setAddOpen(true)}><Plus className="h-4 w-4" /> Add device</Button>} />
           ) : (
-            <DataTable columns={columns} data={filtered} rowKey={(d) => d.id} onRowClick={setSelected} />
+            <DataTable columns={columns} data={filtered} rowKey={(d) => d.id} onRowClick={openDevice} />
           )}
         </CardBody>
       </Card>
@@ -94,11 +153,17 @@ export function ManagerDevices() {
         onClose={() => setSelected(null)}
         title={selected?.name}
         subtitle={selected?.id}
-        footer={<><Button variant="outline" className="flex-1">Reassign</Button><Button className="flex-1">Run diagnostics</Button></>}
+        footer={<><Button variant="outline" className="flex-1" onClick={() => setSelected(null)}>Cancel</Button><Button className="flex-1" disabled={reassigning} onClick={applyReassign}>{reassigning ? 'Saving…' : 'Save assignment'}</Button></>}
       >
         {selected && (
           <div className="space-y-5">
             <div className="flex items-center gap-2"><StatusBadge status={selected.status} /><Badge tone="neutral">{selected.type}</Badge></div>
+            <Field label="Reassign to">
+              <Select value={reassignName} onChange={(e) => setReassignName(e.target.value)}>
+                <option value="">Unassigned</option>
+                {employees.map((e) => <option key={e.id}>{e.name}</option>)}
+              </Select>
+            </Field>
             <dl className="space-y-3 text-sm">
               {[
                 { l: 'Firmware', v: selected.firmware },
@@ -127,13 +192,14 @@ export function ManagerDevices() {
         onClose={() => setAddOpen(false)}
         title="Add device"
         description="Register a new device to your fleet."
-        footer={<><Button variant="outline" onClick={() => setAddOpen(false)}>Cancel</Button><Button onClick={() => setAddOpen(false)}>Add device</Button></>}
+        footer={<><Button variant="outline" onClick={() => setAddOpen(false)} disabled={saving}>Cancel</Button><Button onClick={submitDevice} disabled={saving}>{saving ? 'Adding…' : 'Add device'}</Button></>}
       >
         <div className="space-y-4">
-          <Field label="Device name" required><Input placeholder="e.g. Camera A-14" /></Field>
-          <Field label="Type" required><Select><option>Camera</option><option>Wearable Band</option><option>Edge Gateway</option><option>Helmet Sensor</option></Select></Field>
-          <Field label="Assign to"><Select><option value="">Unassigned</option>{employees.slice(0, 8).map((e) => <option key={e.id}>{e.name}</option>)}</Select></Field>
-          <Field label="Location"><Input placeholder="e.g. Assembly · Zone 3" /></Field>
+          {error && <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-600 dark:bg-rose-950/40">{error}</p>}
+          <Field label="Device name" required><Input placeholder="e.g. Camera A-14" value={name} onChange={(e) => setName(e.target.value)} /></Field>
+          <Field label="Type" required><Select value={type} onChange={(e) => setType(e.target.value)}><option>Camera</option><option>Wearable Band</option><option>Edge Gateway</option><option>Helmet Sensor</option></Select></Field>
+          <Field label="Assign to"><Select value={assignName} onChange={(e) => setAssignName(e.target.value)}><option value="">Unassigned</option>{employees.map((e) => <option key={e.id}>{e.name}</option>)}</Select></Field>
+          <Field label="Location"><Input placeholder="e.g. Assembly · Zone 3" value={location} onChange={(e) => setLocation(e.target.value)} /></Field>
         </div>
       </Modal>
     </div>
