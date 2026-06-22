@@ -8,7 +8,6 @@ import {
   Moon,
   Search,
   Settings,
-  ShieldCheck,
   Sun,
   UserCog,
   X,
@@ -18,6 +17,7 @@ import { useAuth, type Role } from '@/lib/auth'
 import { useTheme } from '@/lib/theme'
 import { navConfig, roleMeta } from '@/lib/nav'
 import { Avatar } from '@/components/ui/Avatar'
+import { logoUrl } from '@/components/shared/Logo'
 import { Button } from '@/components/ui/Button'
 import { Dropdown, DropdownDivider, DropdownItem } from '@/components/ui/Dropdown'
 import { Input } from '@/components/ui/Input'
@@ -53,9 +53,7 @@ export function AppShell({ role }: AppShellProps) {
       >
         <div className="flex h-16 items-center justify-between border-b border-line px-5">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-600 text-white shadow-sm shadow-brand-600/30">
-              <ShieldCheck className="h-5 w-5" />
-            </div>
+            <img src={logoUrl} alt="SentinelAI" className="h-9 w-9 object-contain" draggable={false} />
             <div>
               <p className="text-sm font-bold tracking-tight text-ink">SentinelAI</p>
               <p className={cn('text-[11px] font-medium', meta.accent)}>{meta.label}</p>
@@ -103,7 +101,7 @@ export function AppShell({ role }: AppShellProps) {
 
         <div className="border-t border-line p-3">
           <div className="flex items-center gap-3 rounded-xl px-2 py-2">
-            <Avatar name={user?.name ?? 'User'} size="sm" status="online" />
+            <Avatar name={user?.name ?? 'User'} src={user?.avatarUrl} size="sm" status="online" />
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium text-ink">{user?.name}</p>
               <p className="truncate text-xs text-ink-subtle">{user?.title}</p>
@@ -162,7 +160,7 @@ export function AppShell({ role }: AppShellProps) {
             <Dropdown
               trigger={
                 <button className="flex items-center gap-2 rounded-xl px-1.5 py-1 hover:bg-surface-muted focus-ring">
-                  <Avatar name={user?.name ?? 'User'} size="sm" />
+                  <Avatar name={user?.name ?? 'User'} src={user?.avatarUrl} size="sm" />
                   <ChevronDown className="hidden h-4 w-4 text-ink-subtle sm:block" />
                 </button>
               }

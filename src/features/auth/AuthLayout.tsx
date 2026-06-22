@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { ShieldCheck } from 'lucide-react'
+import { logoUrl } from '@/components/shared/Logo'
 
 interface AuthLayoutProps {
   title: string
@@ -16,8 +16,8 @@ export function AuthLayout({ title, subtitle, children, step }: AuthLayoutProps)
       <div className="relative hidden w-1/2 flex-col justify-between overflow-hidden bg-brand-700 p-12 lg:flex">
         <div className="absolute inset-0 bg-[radial-gradient(50%_50%_at_20%_10%,rgba(255,255,255,0.16),transparent)]" />
         <Link to="/" className="relative flex items-center gap-2.5 text-white">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/15">
-            <ShieldCheck className="h-5 w-5" />
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/15 p-1">
+            <img src={logoUrl} alt="SentinelAI" className="h-full w-full object-contain" draggable={false} />
           </div>
           <span className="text-lg font-bold">SentinelAI</span>
         </Link>
@@ -37,9 +37,7 @@ export function AuthLayout({ title, subtitle, children, step }: AuthLayoutProps)
       {/* Right form */}
       <div className="flex w-full flex-col items-center justify-center bg-surface-subtle px-4 py-10 lg:w-1/2">
         <Link to="/" className="mb-8 flex items-center gap-2.5 lg:hidden">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-600 text-white">
-            <ShieldCheck className="h-5 w-5" />
-          </div>
+          <img src={logoUrl} alt="SentinelAI" className="h-9 w-9 object-contain" draggable={false} />
           <span className="text-lg font-bold text-ink">SentinelAI</span>
         </Link>
         <div className="w-full max-w-sm">

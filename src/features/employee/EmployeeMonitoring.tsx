@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Progress } from '@/components/ui/Progress'
 import { TrendLine } from '@/components/shared/Charts'
+import { useAuth } from '@/lib/auth'
 import { cn } from '@/lib/utils'
 
 const overlays = [
@@ -30,6 +31,7 @@ const overlays = [
 ]
 
 export function EmployeeMonitoring() {
+  const { user } = useAuth()
   const [live, setLive] = useState(true)
   const [series, setSeries] = useState(() =>
     Array.from({ length: 20 }).map((_, i) => ({ t: i, fatigue: 30 + Math.round(Math.random() * 15), hr: 70 + Math.round(Math.random() * 10) })),
@@ -69,6 +71,18 @@ export function EmployeeMonitoring() {
         <Card className="overflow-hidden lg:col-span-2">
           <div className="relative aspect-video w-full bg-slate-900">
             {/* Simulated camera scene */}
+            {user?.avatarUrl && (
+              <img
+                src={user.avatarUrl}
+                alt="Live operator feed"
+                className={cn(
+                  'absolute inset-0 h-full w-full object-cover transition-opacity duration-500',
+                  live ? 'opacity-60' : 'opacity-25 grayscale',
+                )}
+                draggable={false}
+              />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/30 to-slate-900/50" />
             <div className="absolute inset-0 bg-[radial-gradient(60%_60%_at_50%_40%,rgba(53,99,255,0.25),transparent)]" />
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="relative">

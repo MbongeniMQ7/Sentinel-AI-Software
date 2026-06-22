@@ -1,4 +1,5 @@
 import { seeded } from './utils'
+import { workerPhoto } from './avatars'
 
 export type RiskLevel = 'low' | 'moderate' | 'high' | 'critical'
 export type AlertType = 'fatigue' | 'drowsiness' | 'distraction' | 'absence' | 'heart-rate' | 'no-helmet'
@@ -19,6 +20,7 @@ export interface Employee {
   device: string
   avatarStatus: 'online' | 'offline' | 'busy' | 'away'
   lastActive: string
+  avatarUrl: string
 }
 
 export interface AlertItem {
@@ -112,6 +114,7 @@ export const employees: Employee[] = Array.from({ length: 28 }).map((_, i) => {
     device: `DEV-${2200 + i}`,
     avatarStatus: status === 'offline' ? 'offline' : status === 'on-break' ? 'away' : 'online',
     lastActive: `${1 + Math.floor(rand() * 58)}m ago`,
+    avatarUrl: workerPhoto(i),
   }
 })
 

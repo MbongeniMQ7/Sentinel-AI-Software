@@ -54,7 +54,7 @@ export function ManagerEmployeeDetail() {
 
       <Card className="mb-5">
         <CardBody className="flex flex-col gap-5 sm:flex-row sm:items-center">
-          <Avatar name={emp.name} size="lg" status={emp.avatarStatus} className="scale-125" />
+          <Avatar name={emp.name} src={emp.avatarUrl} size="lg" status={emp.avatarStatus} className="scale-125" />
           <div className="flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-xl font-semibold text-ink">{emp.name}</h1>

@@ -2,6 +2,7 @@ import { avatarColor, cn, initials } from '@/lib/utils'
 
 interface AvatarProps {
   name: string
+  src?: string | null
   size?: 'xs' | 'sm' | 'md' | 'lg'
   status?: 'online' | 'offline' | 'busy' | 'away'
   className?: string
@@ -21,18 +22,30 @@ const statusColors = {
   away: 'bg-amber-500',
 }
 
-export function Avatar({ name, size = 'md', status, className }: AvatarProps) {
+export function Avatar({ name, src, size = 'md', status, className }: AvatarProps) {
   return (
     <div className={cn('relative inline-flex shrink-0', className)}>
-      <span
-        className={cn(
-          'inline-flex items-center justify-center rounded-full font-semibold text-white ring-2 ring-surface',
-          avatarColor(name),
-          sizes[size],
-        )}
-      >
-        {initials(name)}
-      </span>
+      {src ? (
+        <img
+          src={src}
+          alt={name}
+          className={cn(
+            'inline-block rounded-full object-cover ring-2 ring-surface',
+            sizes[size],
+          )}
+          draggable={false}
+        />
+      ) : (
+        <span
+          className={cn(
+            'inline-flex items-center justify-center rounded-full font-semibold text-white ring-2 ring-surface',
+            avatarColor(name),
+            sizes[size],
+          )}
+        >
+          {initials(name)}
+        </span>
+      )}
       {status && (
         <span
           className={cn(
