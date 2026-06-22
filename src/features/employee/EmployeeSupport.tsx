@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronDown, LifeBuoy, Mail, MessageSquare, Phone, Search, Send } from 'lucide-react'
+import { ChevronDown, LifeBuoy, MessageSquare, Search, Send, ShieldCheck } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Card, CardHeader, CardBody } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -53,13 +53,13 @@ export function EmployeeSupport() {
 
   return (
     <div>
-      <PageHeader title="Support" description="Find answers fast or reach our team." />
+      <PageHeader title="Support" description="Find answers fast or report an issue to your manager." />
 
       <div className="mb-5 grid gap-4 sm:grid-cols-3">
         {[
-          { icon: MessageSquare, title: 'Live chat', desc: 'Avg reply < 2 min', tone: 'bg-brand-50 text-brand-600 dark:bg-brand-950/40' },
-          { icon: Mail, title: 'Email us', desc: 'support@sentinel.ai', tone: 'bg-violet-50 text-violet-600 dark:bg-violet-950/40' },
-          { icon: Phone, title: 'Call', desc: '+1 (800) 555-0100', tone: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40' },
+          { icon: MessageSquare, title: 'Report to your manager', desc: 'Submit a ticket below', tone: 'bg-brand-50 text-brand-600 dark:bg-brand-950/40' },
+          { icon: LifeBuoy, title: 'Help center', desc: 'Browse common answers', tone: 'bg-violet-50 text-violet-600 dark:bg-violet-950/40' },
+          { icon: ShieldCheck, title: 'Escalation', desc: 'Your manager forwards technical issues to SentinelAI', tone: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40' },
         ].map((c) => (
           <Card key={c.title} className="p-5">
             <span className={cn('flex h-10 w-10 items-center justify-center rounded-xl', c.tone)}>
@@ -94,13 +94,13 @@ export function EmployeeSupport() {
         </Card>
 
         <Card className="lg:col-span-1">
-          <CardHeader title="Submit a ticket" subtitle="We'll get back within 24 hours" />
+          <CardHeader title="Report an issue" subtitle="Your manager will review and respond" />
           <CardBody className="space-y-4">
             {sent ? (
               <div className="rounded-xl bg-emerald-50 p-4 text-center dark:bg-emerald-950/30">
-                <Badge tone="success" className="mb-2">Ticket created</Badge>
-                <p className="text-sm text-ink-muted">Thanks! Our team will reply to your email shortly.</p>
-                <Button variant="outline" size="sm" className="mt-3" onClick={() => setSent(false)}>Submit another</Button>
+                <Badge tone="success" className="mb-2">Ticket sent</Badge>
+                <p className="text-sm text-ink-muted">Your manager has received this issue and will follow up.</p>
+                <Button variant="outline" size="sm" className="mt-3" onClick={() => setSent(false)}>Report another</Button>
               </div>
             ) : (
               <>
@@ -118,7 +118,7 @@ export function EmployeeSupport() {
                   <Select value={priority} onChange={(e) => setPriority(e.target.value as 'low' | 'medium' | 'high' | 'urgent')}><option value="low">Low</option><option value="medium">Normal</option><option value="high">High</option><option value="urgent">Urgent</option></Select>
                 </Field>
                 <Field label="Message" required><Textarea rows={4} placeholder="Tell us what's happening…" value={message} onChange={(e) => setMessage(e.target.value)} /></Field>
-                <Button className="w-full" onClick={submit} disabled={submitting}><Send className="h-4 w-4" /> {submitting ? 'Submitting…' : 'Submit ticket'}</Button>
+                <Button className="w-full" onClick={submit} disabled={submitting}><Send className="h-4 w-4" /> {submitting ? 'Sending…' : 'Send to manager'}</Button>
               </>
             )}
           </CardBody>
