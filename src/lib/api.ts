@@ -811,3 +811,60 @@ export async function inviteUser(input: {
   }
   if (data && data.success === false) throw new Error(data.error ?? 'Could not send invite')
 }
+
+/** Owner creates a new company (tenant) plus its initial subscription.
+ *  Looks up the plan by tier, generates a unique slug, and seeds an MRR
+ *  from the plan's per-seat price × seats. */
+export async function createCompany(input: {
+  name: string
+  industry?: string
+  plan: 'Starter' | 'Growth' | 'Enterprise'
+  seats: number
+  status?: 'active' | 'trial'
+}): Promise<string> {
+  const name = input.name.trim()
+  if (!name) throw new Error('Company name is required')
+
+  const { data: plan, error: planErr } = await supabase
+    .from('plans')
+    .select('id, price_per_seat_cents')
+    .eq('tier', input.plan.toLowerCase())
+    .maybeSingle()
+  unwrap(planErr)
+  if (!plan) throw new Error('Selected plan is not available')
+
+  const seats = Math.max(0, Math.floor(input.seats || 0))
+  const baseSlug =
+    name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'company'
+  const slug = `${baseSlug}-${Math.random().toString(36).slice(2, 6)}`
+  const status = input.status === 'active' ? 'active' : 'trial'
+
+  const { data: company, error: companyErr } = await supabase
+    .from('companies')
+    .insert({
+      name,
+      slug,
+      industry: input.industry?.trim() || null,
+      plan_id: plan.id,
+      status,
+      seats,
+    })
+    .select('id')
+    .single()
+  unwrap(companyErr)
+
+  const companyId = company!.id
+  const { error: subErr } = await supabase.from('subscriptions').insert({
+    company_id: companyId,
+    plan_id: plan.id,
+    status: status === 'active' ? 'active' : 'trialing',
+    seats,
+    mrr_cents: seats * (plan.price_per_seat_cents ?? 0),
+  })
+  unwrap(subErr)
+
+  return companyId
+}
