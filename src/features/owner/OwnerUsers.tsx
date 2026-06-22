@@ -12,27 +12,17 @@ import { DataTable, type Column } from '@/components/ui/DataTable'
 import { EmptyState } from '@/components/shared/States'
 import { StatusBadge } from '@/components/shared/Badges'
 import { KpiCard } from '@/components/shared/KpiCard'
-import { useEmployees, useCompanies, inviteUser } from '@/lib/api'
+import { usePlatformUsers, useCompanies, inviteUser, type PlatformUser } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 
-interface GlobalUser {
-  id: string
-  name: string
-  email: string
-  role: 'Employee' | 'Manager' | 'Owner' | 'Admin'
-  company: string
-  status: 'active' | 'offline' | 'on-leave'
-  lastActive: string
-}
-
-const roleTones = { Employee: 'neutral', Manager: 'purple', Owner: 'success', Admin: 'info' } as const
+const roleTones = { Employee: 'neutral', Manager: 'purple', Owner: 'success' } as const
 
 export function OwnerUsers() {
   const [query, setQuery] = useState('')
   const [role, setRole] = useState('all')
   const [addOpen, setAddOpen] = useState(false)
   const { user } = useAuth()
-  const { data: employees } = useEmployees()
+  const { data: users } = usePlatformUsers()
   const { data: companies } = useCompanies()
 
   // Invite form
@@ -77,29 +67,15 @@ export function OwnerUsers() {
     }
   }
 
-  const users: GlobalUser[] = useMemo(
-    () =>
-      employees.map((e, i) => ({
-        id: e.id,
-        name: e.name,
-        email: e.email,
-        role: (['Employee', 'Employee', 'Manager', 'Admin', 'Owner'] as const)[i % 5],
-        company: companies.length ? companies[i % companies.length].name : '—',
-        status: e.status === 'on-leave' ? 'on-leave' : e.status === 'offline' ? 'offline' : 'active',
-        lastActive: e.lastActive,
-      })),
-    [employees, companies],
-  )
-
   const filtered = useMemo(
-    () => users.filter((u) => (role === 'all' || u.role === role) && (!query || u.name.toLowerCase().includes(query.toLowerCase()) || u.email.toLowerCase().includes(query.toLowerCase()))),
+    () => users.filter((u) => (role === 'all' || u.roleLabel === role) && (!query || u.name.toLowerCase().includes(query.toLowerCase()) || u.email.toLowerCase().includes(query.toLowerCase()))),
     [query, role, users],
   )
 
   const exportCsv = () => {
     const headers = ['Name', 'Email', 'Role', 'Company', 'Status', 'Last active']
     const escape = (v: string) => `"${String(v).replace(/"/g, '""')}"`
-    const rows = filtered.map((u) => [u.name, u.email, u.role, u.company, u.status, u.lastActive].map(escape).join(','))
+    const rows = filtered.map((u) => [u.name, u.email, u.roleLabel, u.company, u.status, u.lastActive].map(escape).join(','))
     const csv = [headers.join(','), ...rows].join('\n')
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
     const url = URL.createObjectURL(blob)
@@ -110,7 +86,7 @@ export function OwnerUsers() {
     URL.revokeObjectURL(url)
   }
 
-  const columns: Column<GlobalUser>[] = [
+  const columns: Column<PlatformUser>[] = [
     {
       key: 'name',
       header: 'User',
@@ -121,7 +97,7 @@ export function OwnerUsers() {
         </div>
       ),
     },
-    { key: 'role', header: 'Role', render: (u) => <Badge tone={roleTones[u.role]}>{u.role}</Badge> },
+    { key: 'role', header: 'Role', render: (u) => <Badge tone={roleTones[u.roleLabel]}>{u.roleLabel}</Badge> },
     { key: 'company', header: 'Company', render: (u) => u.company, hideOnMobile: true },
     { key: 'status', header: 'Status', render: (u) => <StatusBadge status={u.status} />, hideOnMobile: true },
     { key: 'last', header: 'Last active', render: (u) => u.lastActive, hideOnMobile: true },
@@ -150,8 +126,8 @@ export function OwnerUsers() {
       <div className="mb-5 grid gap-4 sm:grid-cols-4">
         <KpiCard label="Total users" value={users.length} icon={<Users className="h-5 w-5" />} tone="brand" />
         <KpiCard label="Active" value={users.filter((u) => u.status === 'active').length} icon={<Users className="h-5 w-5" />} tone="success" />
-        <KpiCard label="Managers" value={users.filter((u) => u.role === 'Manager').length} icon={<ShieldCheck className="h-5 w-5" />} tone="purple" />
-        <KpiCard label="Admins" value={users.filter((u) => u.role === 'Admin').length} icon={<ShieldCheck className="h-5 w-5" />} tone="info" />
+        <KpiCard label="Managers" value={users.filter((u) => u.roleLabel === 'Manager').length} icon={<ShieldCheck className="h-5 w-5" />} tone="purple" />
+        <KpiCard label="Owners" value={users.filter((u) => u.roleLabel === 'Owner').length} icon={<ShieldCheck className="h-5 w-5" />} tone="info" />
       </div>
 
       <Card>
@@ -160,7 +136,7 @@ export function OwnerUsers() {
           <div className="flex items-center gap-2 sm:ml-auto">
             <Select value={role} onChange={(e) => setRole(e.target.value)} className="w-40">
               <option value="all">All roles</option>
-              <option>Employee</option><option>Manager</option><option>Admin</option><option>Owner</option>
+              <option>Employee</option><option>Manager</option><option>Owner</option>
             </Select>
             <Button variant="outline" size="icon" onClick={exportCsv} disabled={filtered.length === 0} aria-label="Export users"><Download className="h-4 w-4" /></Button>
           </div>

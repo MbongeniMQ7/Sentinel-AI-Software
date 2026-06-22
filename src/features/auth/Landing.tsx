@@ -14,7 +14,6 @@ import {
   Sparkles,
   Star,
   UserCog,
-  Users,
   Watch,
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
@@ -50,12 +49,6 @@ export function Landing() {
     { icon: ShieldCheck, title: t('how.s3.title'), desc: t('how.s3.desc') },
   ]
 
-  const roles = [
-    { icon: HeartPulse, title: t('roles.employee.title'), desc: t('roles.employee.desc'), tone: 'from-brand-500 to-brand-600' },
-    { icon: Users, title: t('roles.manager.title'), desc: t('roles.manager.desc'), tone: 'from-violet-500 to-violet-600' },
-    { icon: ShieldCheck, title: t('roles.owner.title'), desc: t('roles.owner.desc'), tone: 'from-emerald-500 to-emerald-600' },
-  ]
-
   return (
     <div className="min-h-full bg-surface-subtle">
       {/* Nav */}
@@ -68,7 +61,6 @@ export function Landing() {
           <nav className="hidden items-center gap-8 text-sm font-medium text-ink-muted md:flex">
             <a href="#features" className="hover:text-ink">{t('nav.features')}</a>
             <a href="#how" className="hover:text-ink">{t('nav.how')}</a>
-            <a href="#roles" className="hover:text-ink">{t('nav.platform')}</a>
             <a href="#cta" className="hover:text-ink">{t('nav.pricing')}</a>
           </nav>
           <div className="flex items-center gap-2">
@@ -201,27 +193,6 @@ export function Landing() {
               </div>
             ))}
           </div>
-        </div>
-      </section>
-
-      {/* Roles */}
-      <section id="roles" className="mx-auto max-w-7xl px-4 py-20 sm:px-6">
-        <div className="mx-auto max-w-2xl text-center">
-          <h2 className="text-3xl font-bold tracking-tight text-ink sm:text-4xl">{t('roles.title')}</h2>
-          <p className="mt-4 text-lg text-ink-muted">{t('roles.subtitle')}</p>
-        </div>
-        <div className="mt-12 grid gap-5 md:grid-cols-3">
-          {roles.map((r) => (
-            <div key={r.title} className="group overflow-hidden rounded-2xl border border-line bg-surface">
-              <div className={`flex h-28 items-center justify-center bg-gradient-to-br ${r.tone}`}>
-                <r.icon className="h-10 w-10 text-white" />
-              </div>
-              <div className="p-6">
-                <h3 className="text-lg font-semibold text-ink">{r.title}</h3>
-                <p className="mt-1.5 text-sm text-ink-muted">{r.desc}</p>
-              </div>
-            </div>
-          ))}
         </div>
       </section>
 
