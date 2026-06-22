@@ -2,9 +2,13 @@ import { PageHeader } from '@/components/shared/PageHeader'
 import { ReportsBuilder } from '@/components/shared/ReportsBuilder'
 import { TrendArea } from '@/components/shared/Charts'
 import { useRevenueTrend } from '@/lib/api'
+import { formatCompact } from '@/lib/utils'
 
 export function OwnerReports() {
   const { data: revenueTrend } = useRevenueTrend()
+  const latest = revenueTrend[revenueTrend.length - 1]
+  const mrr = latest?.mrr ?? 0
+  const arr = latest?.arr ?? 0
   return (
     <div>
       <PageHeader title="Reports" description="Generate platform, compliance and revenue reports." />
@@ -18,10 +22,10 @@ export function OwnerReports() {
         previewTitle="Revenue Report"
         previewSubtitle="All companies · FY 2026"
         kpis={[
-          { label: 'MRR', value: '$246K' },
-          { label: 'ARR', value: '$2.95M' },
-          { label: 'NRR', value: '112%' },
-          { label: 'Churn', value: '1.8%' },
+          { label: 'MRR', value: `R${formatCompact(mrr)}` },
+          { label: 'ARR', value: `R${formatCompact(arr)}` },
+          { label: 'NRR', value: '—' },
+          { label: 'Churn', value: '—' },
         ]}
         chart={
           <>

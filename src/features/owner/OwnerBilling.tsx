@@ -70,9 +70,9 @@ export function OwnerBilling() {
           <CardHeader title="Subscription plans" icon={<CreditCard className="h-4 w-4" />} />
           <CardBody className="space-y-3">
             {[
-              { name: 'Starter', price: '$12', per: 'seat/mo', companies: companies.filter((c) => c.plan === 'Starter').length, tone: 'info' as const },
-              { name: 'Growth', price: '$9', per: 'seat/mo', companies: companies.filter((c) => c.plan === 'Growth').length, tone: 'brand' as const },
-              { name: 'Enterprise', price: '$7', per: 'seat/mo', companies: companies.filter((c) => c.plan === 'Enterprise').length, tone: 'purple' as const },
+              { name: 'Starter', price: 'R12', per: 'seat/mo', companies: companies.filter((c) => c.plan === 'Starter').length, tone: 'info' as const },
+              { name: 'Growth', price: 'R9', per: 'seat/mo', companies: companies.filter((c) => c.plan === 'Growth').length, tone: 'brand' as const },
+              { name: 'Enterprise', price: 'R7', per: 'seat/mo', companies: companies.filter((c) => c.plan === 'Enterprise').length, tone: 'purple' as const },
             ].map((p) => (
               <div key={p.name} className="rounded-xl border border-line p-4">
                 <div className="flex items-center justify-between"><Badge tone={p.tone}>{p.name}</Badge><span className="text-sm text-ink-muted">{p.companies} companies</span></div>
