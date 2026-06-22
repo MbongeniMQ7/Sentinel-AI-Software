@@ -47,10 +47,6 @@ function downloadBlob(content: BlobPart, mime: string, filename: string) {
   URL.revokeObjectURL(url)
 }
 
-function escapeCsv(value: string): string {
-  return /[",\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value
-}
-
 function escapeHtml(value: string): string {
   return value
     .replace(/&/g, '&amp;')
@@ -65,6 +61,7 @@ export function ReportsBuilder({ templates, previewTitle, previewSubtitle, kpis,
   const [range, setRange] = useState('30d')
   const [generating, setGenerating] = useState(false)
   const [ready, setReady] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const selectedTemplate = templates.find((t) => t.id === selected) ?? templates[0]
   const reportTitle = selectedTemplate?.title ?? previewTitle
@@ -80,29 +77,38 @@ export function ReportsBuilder({ templates, previewTitle, previewSubtitle, kpis,
 
   const baseFilename = `${slugify(reportTitle)}-${new Date().toISOString().slice(0, 10)}`
 
-  const exportCsv = () => {
-    const lines: string[] = []
-    meta.forEach(([k, v]) => lines.push(`${escapeCsv(k)},${escapeCsv(v)}`))
-    lines.push('')
-    lines.push('Metric,Value')
-    kpis.forEach((k) => lines.push(`${escapeCsv(k.label)},${escapeCsv(k.value)}`))
-    downloadBlob('\uFEFF' + lines.join('\r\n'), 'text/csv;charset=utf-8', `${baseFilename}.csv`)
-  }
-
-  const exportExcel = () => {
-    // Excel opens an HTML table natively; no external dependency required.
-    const metaRows = meta
-      .map(([k, v]) => `<tr><th align="left">${escapeHtml(k)}</th><td>${escapeHtml(v)}</td></tr>`)
-      .join('')
-    const kpiRows = kpis
-      .map((k) => `<tr><td>${escapeHtml(k.label)}</td><td>${escapeHtml(k.value)}</td></tr>`)
-      .join('')
-    const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8" /></head><body>
-      <table>${metaRows}</table>
-      <br/>
-      <table border="1"><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody>${kpiRows}</tbody></table>
-    </body></html>`
-    downloadBlob(html, 'application/vnd.ms-excel;charset=utf-8', `${baseFilename}.xls`)
+  // Branded documents (PDF / Excel / CSV) are produced by the Python
+  // serverless function at /api/reports using the logo and brand theme.
+  const exportReport = async (fmt: Format = format) => {
+    setGenerating(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/reports', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: reportTitle,
+          subtitle: previewSubtitle,
+          range: rangeLabel,
+          format: fmt,
+          generatedAt,
+          meta,
+          kpis,
+        }),
+      })
+      if (!res.ok) throw new Error(`Report service error (${res.status})`)
+      const blob = await res.blob()
+      const disposition = res.headers.get('Content-Disposition') ?? ''
+      const match = /filename="?([^"]+)"?/.exec(disposition)
+      const ext = fmt === 'xlsx' ? 'xlsx' : fmt
+      const filename = match?.[1] ?? `${baseFilename}.${ext}`
+      downloadBlob(blob, blob.type || 'application/octet-stream', filename)
+      setReady(true)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not generate the report')
+    } finally {
+      setGenerating(false)
+    }
   }
 
   const buildPrintHtml = (): string => {
@@ -159,12 +165,6 @@ export function ReportsBuilder({ templates, previewTitle, previewSubtitle, kpis,
     }, 400)
   }
 
-  const exportReport = (fmt: Format = format) => {
-    if (fmt === 'csv') exportCsv()
-    else if (fmt === 'xlsx') exportExcel()
-    else printReport()
-  }
-
   const shareReport = async () => {
     const summary = `${reportTitle}\n${previewSubtitle} · ${rangeLabel}\n\n${kpis
       .map((k) => `${k.label}: ${k.value}`)
@@ -181,13 +181,7 @@ export function ReportsBuilder({ templates, previewTitle, previewSubtitle, kpis,
   }
 
   const generate = () => {
-    setGenerating(true)
-    setReady(false)
-    setTimeout(() => {
-      setGenerating(false)
-      setReady(true)
-      exportReport()
-    }, 800)
+    void exportReport()
   }
 
   return (
@@ -219,6 +213,7 @@ export function ReportsBuilder({ templates, previewTitle, previewSubtitle, kpis,
           <Button className="w-full" onClick={generate} loading={generating}>
             {!generating && <Sparkles className="h-4 w-4" />} {generating ? 'Generating…' : 'Generate report'}
           </Button>
+          {error && <p className="rounded-lg bg-rose-50 px-3 py-2 text-xs text-rose-600 dark:bg-rose-950/40">{error}</p>}
         </CardBody>
       </Card>
 
