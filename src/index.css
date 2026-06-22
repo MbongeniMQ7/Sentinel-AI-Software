@@ -1,0 +1,80 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --surface: 255 255 255;
+  --surface-subtle: 248 250 252;
+  --surface-muted: 241 245 249;
+  --ink: 15 23 42;
+  --ink-muted: 71 85 105;
+  --ink-subtle: 148 163 184;
+  --line: 226 232 240;
+}
+
+.dark {
+  --surface: 17 24 39;
+  --surface-subtle: 15 20 33;
+  --surface-muted: 30 41 59;
+  --ink: 241 245 249;
+  --ink-muted: 148 163 184;
+  --ink-subtle: 100 116 139;
+  --line: 39 51 73;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  font-feature-settings: 'cv11', 'ss01';
+  font-variation-settings: 'opsz' 32;
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-surface-subtle text-ink antialiased;
+  font-family: 'Inter var', 'Inter', system-ui, sans-serif;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-line rounded-full;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-ink-subtle;
+  background-clip: content-box;
+}
+
+@layer components {
+  .card {
+    @apply rounded-2xl border border-line bg-surface shadow-card;
+  }
+  .focus-ring {
+    @apply outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 focus-visible:ring-offset-surface;
+  }
+  .skeleton {
+    @apply relative overflow-hidden bg-surface-muted rounded-md;
+  }
+  .skeleton::after {
+    content: '';
+    @apply absolute inset-0 -translate-x-full;
+    background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.25), transparent);
+    animation: shimmer 1.5s infinite;
+  }
+}
+
+.recharts-default-tooltip {
+  @apply !rounded-xl !border-line !bg-surface !shadow-pop;
+}
+.recharts-cartesian-axis-tick-value {
+  @apply fill-ink-subtle text-xs;
+}
