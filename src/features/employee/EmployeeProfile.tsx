@@ -1,25 +1,27 @@
 import { useState } from 'react'
-import { Camera, HeartPulse, Layers, Mail, MapPin, Phone, ShieldCheck, UserCog } from 'lucide-react'
+import { Mail, MapPin, Phone, ShieldCheck, UserCog, Watch } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Card, CardHeader, CardBody, CardFooter } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, Select } from '@/components/ui/Input'
 import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'
-import { saveProfile, saveEmployeeMonitoring } from '@/lib/api'
+import { saveProfile, useEmployees } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 
-const monitoringTypes = [
-  { id: 'camera', title: 'Camera only', desc: 'Vision-based fatigue detection.', icon: Camera },
-  { id: 'wearable', title: 'Wearable only', desc: 'Heart-rate & motion biometrics.', icon: HeartPulse },
-  { id: 'hybrid', title: 'Hybrid', desc: 'Camera + wearable fusion (recommended).', icon: Layers },
-] as const
+const monitoringLabel: Record<'camera' | 'wearable' | 'hybrid', string> = {
+  camera: 'Camera monitoring',
+  wearable: 'Wearable monitoring',
+  hybrid: 'Hybrid monitoring',
+}
 
 export function EmployeeProfile() {
   const { user, refresh } = useAuth()
+  const { data: employees } = useEmployees()
+  const me = employees.find((e) => e.id === user?.id)
+  const monitoring = me?.monitoring ?? 'wearable'
   const [name, setName] = useState(user?.name ?? '')
   const [phone, setPhone] = useState('')
-  const [monitoring, setMonitoring] = useState<'camera' | 'wearable' | 'hybrid'>('hybrid')
   const [saving, setSaving] = useState(false)
   const [status, setStatus] = useState<string | null>(null)
 
@@ -29,7 +31,6 @@ export function EmployeeProfile() {
     setStatus(null)
     try {
       await saveProfile({ id: user.id, fullName: name, phone })
-      await saveEmployeeMonitoring(user.id, monitoring)
       await refresh()
       setStatus('Saved')
     } catch (e) {
@@ -55,7 +56,7 @@ export function EmployeeProfile() {
                 { icon: Mail, value: user?.email },
                 { icon: Phone, value: '+1 (555) 0142' },
                 { icon: MapPin, value: 'Plant 4 · Assembly Floor' },
-                { icon: ShieldCheck, value: 'Hybrid monitoring active' },
+                { icon: ShieldCheck, value: `${monitoringLabel[monitoring]} active` },
               ].map((r, i) => (
                 <div key={i} className="flex items-center gap-3 text-ink-muted">
                   <r.icon className="h-4 w-4 text-ink-subtle" /> <span className="truncate text-ink">{r.value}</span>
@@ -88,23 +89,19 @@ export function EmployeeProfile() {
           </Card>
 
           <Card>
-            <CardHeader title="Monitoring type" subtitle="Choose how SentinelAI tracks your wellness" />
-            <CardBody className="grid gap-3 sm:grid-cols-3">
-              {monitoringTypes.map((m) => (
-                <button
-                  key={m.id}
-                  onClick={() => setMonitoring(m.id)}
-                  className={`flex flex-col items-start gap-3 rounded-xl border p-4 text-left transition-colors ${m.id === monitoring ? 'border-brand-500 bg-brand-50/60 ring-1 ring-brand-500 dark:bg-brand-950/30' : 'border-line hover:bg-surface-muted'}`}
-                >
-                  <span className={`flex h-9 w-9 items-center justify-center rounded-lg ${m.id === monitoring ? 'bg-brand-600 text-white' : 'bg-surface-muted text-ink-muted'}`}>
-                    <m.icon className="h-4 w-4" />
-                  </span>
-                  <span>
-                    <span className="block text-sm font-semibold text-ink">{m.title}</span>
-                    <span className="block text-xs text-ink-muted">{m.desc}</span>
-                  </span>
-                </button>
-              ))}
+            <CardHeader title="Monitoring type" subtitle="Assigned and managed by your supervisor" />
+            <CardBody>
+              <div className="flex items-center gap-4 rounded-xl border border-line bg-surface-subtle p-4">
+                <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-600 text-white">
+                  <Watch className="h-5 w-5" />
+                </span>
+                <div>
+                  <p className="text-sm font-semibold text-ink">{monitoringLabel[monitoring]}</p>
+                  <p className="text-xs text-ink-muted">
+                    Your monitoring method is configured by your manager. Contact them to request a change.
+                  </p>
+                </div>
+              </div>
             </CardBody>
           </Card>
         </div>
