@@ -55,6 +55,22 @@ Deno.serve(async (req: Request) => {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
   )
 
+  // Only pre-registered accounts may sign in. If an owner/admin never invited
+  // this email (no account_roles row), reject before doing any work.
+  const { data: account, error: accountErr } = await supabase
+    .from('account_roles')
+    .select('email')
+    .eq('email', email)
+    .maybeSingle()
+
+  if (accountErr) return jsonResponse({ error: 'Could not verify code' }, 500)
+  if (!account) {
+    return jsonResponse(
+      { error: "This email isn't registered. Ask your administrator to invite you first." },
+      403,
+    )
+  }
+
   const { data: record, error: lookupErr } = await supabase
     .from('otp_codes')
     .select('id, code_hash, role, expires_at, consumed_at, attempts')
