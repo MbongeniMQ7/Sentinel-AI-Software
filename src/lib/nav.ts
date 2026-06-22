@@ -1,5 +1,4 @@
 import {
-  Activity,
   AlertTriangle,
   BadgeDollarSign,
   Bell,
@@ -97,26 +96,40 @@ export const navConfig: Record<Role, NavGroup[]> = {
   ],
   owner: [
     {
-      title: 'Executive',
+      title: 'Overview',
       items: [
-        { label: 'Dashboard', to: '/owner/dashboard', icon: LayoutDashboard },
-        { label: 'Activity', to: '/owner/activity', icon: Activity },
-        { label: 'Revenue', to: '/owner/revenue', icon: LineChart },
-      ],
-    },
-    {
-      title: 'Platform',
-      items: [
-        { label: 'Companies', to: '/owner/companies', icon: Building2 },
+        { label: 'Home', to: '/owner/dashboard', icon: LayoutDashboard },
         { label: 'Users', to: '/owner/users', icon: Users },
-        { label: 'IoT Fleet', to: '/owner/fleet', icon: Cpu },
+        { label: 'Companies', to: '/owner/companies', icon: Building2 },
       ],
     },
     {
-      title: 'Business',
+      title: 'Financials',
       items: [
-        { label: 'Billing', to: '/owner/billing', icon: Receipt },
+        { label: 'Revenue', to: '/owner/revenue', icon: LineChart },
+        { label: 'Subscriptions', to: '/owner/billing', icon: Receipt },
+      ],
+    },
+    {
+      title: 'Safety & Monitoring',
+      items: [
+        { label: 'Alerts', to: '/owner/alerts', icon: AlertTriangle },
+        { label: 'Camera Analysis', to: '/owner/camera', icon: Camera },
+        { label: 'IoT Wristbands', to: '/owner/fleet', icon: Cpu },
+      ],
+    },
+    {
+      title: 'Operations',
+      items: [
+        { label: 'Issues', to: '/owner/issues', icon: HelpCircle },
+        { label: 'Audit Log', to: '/owner/audit', icon: ScrollText },
         { label: 'Reports', to: '/owner/reports', icon: FileBarChart },
+      ],
+    },
+    {
+      title: 'Management',
+      items: [
+        { label: 'Create Manager', to: '/owner/create-manager', icon: UserPlus },
         { label: 'Settings', to: '/owner/settings', icon: Settings },
       ],
     },

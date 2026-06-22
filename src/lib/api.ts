@@ -382,6 +382,47 @@ export function useAuditLogs() {
   return useQuery<AuditLog[]>(fetchAuditLogs, [])
 }
 
+export interface Ticket {
+  id: string
+  number: string
+  subject: string
+  category: string
+  priority: 'low' | 'medium' | 'high' | 'urgent'
+  status: 'open' | 'pending' | 'resolved' | 'closed'
+  company: string
+  openedBy: string
+  created: string
+}
+
+async function fetchTickets(): Promise<Ticket[]> {
+  const { data, error } = await supabase
+    .from('support_tickets')
+    .select(`
+      id, number, subject, category, priority, status, created_at,
+      companies(name),
+      profiles!support_tickets_opened_by_fkey(full_name)
+    `)
+    .order('created_at', { ascending: false })
+    .limit(100)
+  if (error) throw error
+
+  return (data ?? []).map((row: any) => ({
+    id: String(row.id),
+    number: row.number ?? '—',
+    subject: row.subject ?? '—',
+    category: row.category ?? 'General',
+    priority: (row.priority ?? 'medium') as Ticket['priority'],
+    status: (row.status ?? 'open') as Ticket['status'],
+    company: row.companies?.name ?? '—',
+    openedBy: row.profiles?.full_name ?? 'Unknown',
+    created: relativeTime(row.created_at),
+  }))
+}
+
+export function useSupportTickets() {
+  return useQuery<Ticket[]>(fetchTickets, [])
+}
+
 async function fetchFaqs(): Promise<Faq[]> {
   const { data, error } = await supabase
     .from('faqs')
