@@ -12,7 +12,7 @@ import { DataTable, type Column } from '@/components/ui/DataTable'
 import { EmptyState } from '@/components/shared/States'
 import { StatusBadge } from '@/components/shared/Badges'
 import { KpiCard } from '@/components/shared/KpiCard'
-import { employees, companies } from '@/lib/mockData'
+import { useEmployees, useCompanies } from '@/lib/api'
 
 interface GlobalUser {
   id: string
@@ -26,24 +26,30 @@ interface GlobalUser {
 
 const roleTones = { Employee: 'neutral', Manager: 'purple', Owner: 'success', Admin: 'info' } as const
 
-const users: GlobalUser[] = employees.map((e, i) => ({
-  id: e.id,
-  name: e.name,
-  email: e.email,
-  role: (['Employee', 'Employee', 'Manager', 'Admin', 'Owner'] as const)[i % 5],
-  company: companies[i % companies.length].name,
-  status: e.status === 'on-leave' ? 'on-leave' : e.status === 'offline' ? 'offline' : 'active',
-  lastActive: e.lastActive,
-}))
-
 export function OwnerUsers() {
   const [query, setQuery] = useState('')
   const [role, setRole] = useState('all')
   const [addOpen, setAddOpen] = useState(false)
+  const { data: employees } = useEmployees()
+  const { data: companies } = useCompanies()
+
+  const users: GlobalUser[] = useMemo(
+    () =>
+      employees.map((e, i) => ({
+        id: e.id,
+        name: e.name,
+        email: e.email,
+        role: (['Employee', 'Employee', 'Manager', 'Admin', 'Owner'] as const)[i % 5],
+        company: companies.length ? companies[i % companies.length].name : '—',
+        status: e.status === 'on-leave' ? 'on-leave' : e.status === 'offline' ? 'offline' : 'active',
+        lastActive: e.lastActive,
+      })),
+    [employees, companies],
+  )
 
   const filtered = useMemo(
     () => users.filter((u) => (role === 'all' || u.role === role) && (!query || u.name.toLowerCase().includes(query.toLowerCase()) || u.email.toLowerCase().includes(query.toLowerCase()))),
-    [query, role],
+    [query, role, users],
   )
 
   const columns: Column<GlobalUser>[] = [

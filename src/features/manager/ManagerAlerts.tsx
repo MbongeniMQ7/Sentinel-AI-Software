@@ -13,17 +13,20 @@ import { EmptyState } from '@/components/shared/States'
 import { KpiCard } from '@/components/shared/KpiCard'
 import { RiskBadge, AlertStatusBadge } from '@/components/shared/Badges'
 import { BarSeries } from '@/components/shared/Charts'
-import { alerts, employees, weeklyAlerts, type AlertItem } from '@/lib/mockData'
+import { useAlerts, useEmployees, useWeeklyAlerts, type AlertItem } from '@/lib/api'
 
 export function ManagerAlerts() {
   const [tab, setTab] = useState('feed')
   const [query, setQuery] = useState('')
   const [sev, setSev] = useState('all')
   const [selected, setSelected] = useState<AlertItem | null>(null)
+  const { data: alerts } = useAlerts()
+  const { data: employees } = useEmployees()
+  const { data: weeklyAlerts } = useWeeklyAlerts()
 
   const filtered = useMemo(
     () => alerts.filter((a) => (sev === 'all' || a.severity === sev) && (!query || a.employee.toLowerCase().includes(query.toLowerCase()) || a.message.toLowerCase().includes(query.toLowerCase()))),
-    [query, sev],
+    [query, sev, alerts],
   )
 
   const columns: Column<AlertItem>[] = [

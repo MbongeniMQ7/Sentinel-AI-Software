@@ -19,7 +19,7 @@ import { Gauge } from '@/components/shared/Gauge'
 import { KpiCard } from '@/components/shared/KpiCard'
 import { TrendArea } from '@/components/shared/Charts'
 import { RiskBadge } from '@/components/shared/Badges'
-import { fatigueTrend, alerts } from '@/lib/mockData'
+import { useFatigueTrend, useAlerts } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 
 const quickActions = [
@@ -31,6 +31,8 @@ const quickActions = [
 
 export function EmployeeDashboard() {
   const { user } = useAuth()
+  const { data: fatigueTrend } = useFatigueTrend(user?.id)
+  const { data: alerts } = useAlerts()
   const myAlerts = alerts.slice(0, 4)
 
   return (

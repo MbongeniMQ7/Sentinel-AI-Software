@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Select } from '@/components/ui/Input'
 import { KpiCard } from '@/components/shared/KpiCard'
 import { BarSeries, TrendArea, TrendLine } from '@/components/shared/Charts'
-import { departmentFatigue, fatigueTrend } from '@/lib/mockData'
+import { useDepartmentFatigue, useFatigueTrend } from '@/lib/api'
 
 const predictions = [
   { window: '14:00 – 16:00', dept: 'Night · Assembly', risk: 'High', prob: 78, tone: 'danger' as const },
@@ -21,6 +21,8 @@ const forecast = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d, i) =>
 }))
 
 export function ManagerAnalytics() {
+  const { data: departmentFatigue } = useDepartmentFatigue()
+  const { data: fatigueTrend } = useFatigueTrend()
   return (
     <div>
       <PageHeader

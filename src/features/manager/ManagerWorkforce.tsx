@@ -10,7 +10,7 @@ import { DataTable, type Column } from '@/components/ui/DataTable'
 import { Progress } from '@/components/ui/Progress'
 import { EmptyState } from '@/components/shared/States'
 import { RiskBadge, StatusBadge } from '@/components/shared/Badges'
-import { employees, type Employee } from '@/lib/mockData'
+import { useEmployees, type Employee } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
 export function ManagerWorkforce() {
@@ -19,6 +19,7 @@ export function ManagerWorkforce() {
   const [query, setQuery] = useState('')
   const [dept, setDept] = useState('all')
   const [risk, setRisk] = useState('all')
+  const { data: employees } = useEmployees()
 
   const filtered = useMemo(
     () =>
@@ -28,7 +29,7 @@ export function ManagerWorkforce() {
         if (query && !e.name.toLowerCase().includes(query.toLowerCase()) && !e.role.toLowerCase().includes(query.toLowerCase())) return false
         return true
       }),
-    [query, dept, risk],
+    [query, dept, risk, employees],
   )
 
   const columns: Column<Employee>[] = [

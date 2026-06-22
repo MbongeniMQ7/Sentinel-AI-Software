@@ -10,7 +10,7 @@ import { TrendArea } from '@/components/shared/Charts'
 import { RiskBadge, StatusBadge, AlertStatusBadge } from '@/components/shared/Badges'
 import { KpiCard } from '@/components/shared/KpiCard'
 import { DataTable, type Column } from '@/components/ui/DataTable'
-import { employees, alerts, fatigueTrend, type AlertItem } from '@/lib/mockData'
+import { useEmployees, useAlerts, useFatigueTrend, type AlertItem } from '@/lib/api'
 import { useState } from 'react'
 
 const sessionColumns: Column<{ id: string; date: string; duration: string; avgFatigue: number; alerts: number; status: string }>[] = [
@@ -33,9 +33,12 @@ const sessions = Array.from({ length: 6 }).map((_, i) => ({
 
 export function ManagerEmployeeDetail() {
   const { id } = useParams()
-  const emp = employees.find((e) => e.id === id) ?? employees[0]
   const [tab, setTab] = useState('trends')
-  const empAlerts = alerts.filter((a) => a.employeeId === emp.id)
+  const { data: employees, loading } = useEmployees()
+  const { data: alerts } = useAlerts()
+  const { data: fatigueTrend } = useFatigueTrend(id)
+  const emp = employees.find((e) => e.id === id) ?? employees[0]
+  const empAlerts = alerts.filter((a) => a.employeeId === emp?.id)
   const alertList = empAlerts.length ? empAlerts : alerts.slice(0, 3)
 
   const alertCols: Column<AlertItem>[] = [
@@ -45,6 +48,14 @@ export function ManagerEmployeeDetail() {
     { key: 'time', header: 'When', render: (a) => a.timestamp, hideOnMobile: true },
     { key: 'status', header: 'Status', render: (a) => <AlertStatusBadge status={a.status} /> },
   ]
+
+  if (!emp) {
+    return (
+      <div className="py-20 text-center text-sm text-ink-muted">
+        {loading ? 'Loading employee…' : 'Employee not found.'}
+      </div>
+    )
+  }
 
   return (
     <div>

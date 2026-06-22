@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Progress } from '@/components/ui/Progress'
 import { KpiCard } from '@/components/shared/KpiCard'
 import { BarSeries, Donut, TrendArea } from '@/components/shared/Charts'
-import { companies, devices } from '@/lib/mockData'
+import { useCompanies, useDevices } from '@/lib/api'
 
 const deviceTypes = [
   { name: 'Cameras', value: 1840, color: '#3563ff' },
@@ -25,6 +25,8 @@ const deployByRegion = [
 const uptimeTrend = ['W1', 'W2', 'W3', 'W4', 'W5', 'W6'].map((w, i) => ({ week: w, uptime: 98 + ((i * 3) % 2) + Math.random() }))
 
 export function OwnerFleet() {
+  const { data: companies } = useCompanies()
+  const { data: devices } = useDevices()
   const total = deviceTypes.reduce((s, d) => s + d.value, 0)
 
   return (
@@ -95,7 +97,7 @@ export function OwnerFleet() {
           {devices.slice(0, 6).map((d, i) => (
             <div key={d.id} className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-surface-muted">
               <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-surface-muted text-ink-muted"><Cpu className="h-4 w-4" /></span>
-              <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium text-ink">{d.name}</p><p className="text-xs text-ink-subtle">{companies[i % companies.length].name} · {d.location}</p></div>
+              <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium text-ink">{d.name}</p><p className="text-xs text-ink-subtle">{(companies.length ? companies[i % companies.length].name : '—')} · {d.location}</p></div>
               <Badge tone={d.status === 'online' ? 'success' : d.status === 'offline' ? 'neutral' : 'warning'} dot className="capitalize">{d.status}</Badge>
             </div>
           ))}

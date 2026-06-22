@@ -1,5 +1,5 @@
 import { Badge } from '@/components/ui/Badge'
-import type { RiskLevel, AlertStatus } from '@/lib/mockData'
+import type { RiskLevel, AlertStatus } from '@/lib/api'
 
 const riskTone: Record<RiskLevel, 'success' | 'warning' | 'danger' | 'info'> = {
   low: 'success',

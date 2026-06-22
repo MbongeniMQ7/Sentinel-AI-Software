@@ -9,7 +9,7 @@ import { DataTable, type Column } from '@/components/ui/DataTable'
 import { Badge } from '@/components/ui/Badge'
 import { StatusBadge } from '@/components/shared/Badges'
 import { KpiCard } from '@/components/shared/KpiCard'
-import { leaveRequests, type LeaveRequest } from '@/lib/mockData'
+import { useLeaveRequests, type LeaveRequest } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
 const columns: Column<LeaveRequest>[] = [
@@ -26,6 +26,7 @@ const leaveDays = new Set([8, 9, 10, 18, 22, 23])
 
 export function EmployeeLeave() {
   const [open, setOpen] = useState(false)
+  const { data: leaveRequests } = useLeaveRequests()
   const cells = Array.from({ length: 35 }, (_, i) => i - 2) // offset start
 
   return (

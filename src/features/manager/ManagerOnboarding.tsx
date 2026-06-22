@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { Field, Input, Select } from '@/components/ui/Input'
 import { Switch } from '@/components/ui/Switch'
 import { Badge } from '@/components/ui/Badge'
-import { devices } from '@/lib/mockData'
+import { useDevices } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
 const steps = [
@@ -19,6 +19,7 @@ export function ManagerOnboarding() {
   const [step, setStep] = useState(1)
   const [done, setDone] = useState(false)
   const [selectedDevices, setSelectedDevices] = useState<string[]>([])
+  const { data: devices } = useDevices()
 
   const toggleDevice = (id: string) => setSelectedDevices((p) => (p.includes(id) ? p.filter((d) => d !== id) : [...p, id]))
   const available = devices.filter((d) => !d.assignedTo).slice(0, 6)

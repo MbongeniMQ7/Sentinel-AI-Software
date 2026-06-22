@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/Badge'
 import { EmptyState } from '@/components/shared/States'
 import { RiskBadge, AlertStatusBadge } from '@/components/shared/Badges'
 import { KpiCard } from '@/components/shared/KpiCard'
-import { alerts, type AlertItem } from '@/lib/mockData'
+import { useAlerts, type AlertItem } from '@/lib/api'
 
 const tabs = [
   { id: 'all', label: 'All' },
@@ -24,6 +24,7 @@ export function EmployeeAlerts() {
   const [query, setQuery] = useState('')
   const [severity, setSeverity] = useState('all')
   const [selected, setSelected] = useState<AlertItem | null>(null)
+  const { data: alerts } = useAlerts()
 
   const filtered = useMemo(
     () =>
@@ -33,7 +34,7 @@ export function EmployeeAlerts() {
         if (query && !a.message.toLowerCase().includes(query.toLowerCase()) && !a.location.toLowerCase().includes(query.toLowerCase())) return false
         return true
       }),
-    [tab, severity, query],
+    [tab, severity, query, alerts],
   )
 
   return (
