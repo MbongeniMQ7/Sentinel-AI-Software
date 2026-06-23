@@ -76,16 +76,23 @@ export function OtpVerify() {
   }
 
   return (
-    <div className="relative flex min-h-full flex-col items-center justify-center bg-surface-subtle px-5 py-12">
+    <div className="relative flex min-h-full flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-brand-50 via-surface to-brand-100/70 px-5 py-12 dark:from-surface-subtle dark:via-surface dark:to-brand-900/20">
+      {/* Decorative background */}
+      <div className="pointer-events-none absolute -right-28 -top-28 h-[26rem] w-[26rem] rounded-full bg-brand-300/30 blur-3xl dark:bg-brand-700/20" />
+      <div className="pointer-events-none absolute -bottom-32 -left-24 h-[24rem] w-[24rem] rounded-[45%] bg-sky-300/25 blur-3xl dark:bg-sky-800/20" />
+      <span className="pointer-events-none absolute left-[18%] top-[22%] h-2 w-2 rounded-full bg-brand-400/70" />
+      <span className="pointer-events-none absolute right-[20%] top-[30%] h-1.5 w-1.5 rounded-full bg-amber-400/80" />
+      <span className="pointer-events-none absolute bottom-[24%] right-[24%] h-2 w-2 rounded-full bg-emerald-400/70" />
+
       <button
         onClick={() => navigate('/auth/role')}
-        className="absolute left-5 top-5 flex h-10 w-10 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-surface-muted hover:text-ink"
+        className="absolute left-5 top-5 z-10 flex h-10 w-10 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-surface-muted hover:text-ink"
         aria-label="Back"
       >
         <ArrowLeft className="h-5 w-5" />
       </button>
 
-      <div className="w-full max-w-sm text-center">
+      <div className="relative w-full max-w-md rounded-3xl border border-line/70 bg-surface/85 p-8 text-center shadow-2xl shadow-brand-900/10 backdrop-blur-md sm:p-10">
         {/* Illustration */}
         <div className="relative mx-auto h-44 w-44">
           <div className="absolute inset-0 rounded-full bg-brand-100/50 dark:bg-brand-900/30" />

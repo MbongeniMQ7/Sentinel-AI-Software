@@ -23,9 +23,9 @@ export const APP_URL = Deno.env.get('APP_URL') ?? 'https://agent.sentinelai-soft
 export const APP_NAME = Deno.env.get('OTP_APP_NAME') ?? 'SentinelAI'
 export const BANNER_URL =
   Deno.env.get('EMAIL_BANNER_URL') ?? `${APP_URL}/banner.png`
-export const FROM_EMAIL = Deno.env.get('OTP_FROM_EMAIL') ?? 'no-reply@mmqtech.co.za'
-export const REPLY_TO = Deno.env.get('OTP_REPLY_TO') ?? 'support@mmqtech.co.za'
-export const SUPPORT_EMAIL = Deno.env.get('SUPPORT_EMAIL') ?? 'support@sentinelai-software.co.za'
+export const FROM_EMAIL = Deno.env.get('OTP_FROM_EMAIL') ?? 'info@sentinelai-software.co.za'
+export const REPLY_TO = Deno.env.get('OTP_REPLY_TO') ?? 'info@sentinelai-software.co.za'
+export const SUPPORT_EMAIL = Deno.env.get('SUPPORT_EMAIL') ?? 'info@sentinelai-software.co.za'
 export const SUPPORT_PHONE = Deno.env.get('SUPPORT_PHONE') ?? '+27 (0) 10 020 0000'
 
 export interface InfoRow {
@@ -76,22 +76,22 @@ export function renderBrandedEmail(opts: BrandedEmailOptions): string {
   const introHtml = intros
     .map(
       (p) =>
-        `<p style="margin:0 0 16px;font-size:15px;line-height:1.65;color:#475569;">${p}</p>`,
+        `<p style="margin:0 0 18px;font-size:15.5px;line-height:1.7;color:#475569;">${p}</p>`,
     )
     .join('')
 
   const highlightHtml = opts.highlight
-    ? `<p style="margin:0 0 24px;font-size:16px;line-height:1.5;font-weight:700;color:#1f43f5;">${opts.highlight}</p>`
+    ? `<div style="margin:6px 0 26px;font-size:16px;line-height:1.5;font-weight:700;color:#1f43f5;">${opts.highlight}</div>`
     : ''
 
   const rowsHtml =
     opts.infoRows && opts.infoRows.length
-      ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:4px 0 28px;background:#f4f6fd;border:1px solid #e2e8fb;border-radius:14px;">
+      ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:6px 0 30px;background:#f7f9ff;border:1px solid #e6ecfb;border-radius:16px;">
            ${opts.infoRows
              .map(
                (r, i) => `<tr>
-                 <td style="padding:13px 20px;font-size:13px;color:#64748b;${i ? 'border-top:1px solid #e8edfb;' : ''}">${esc(r.label)}</td>
-                 <td align="right" style="padding:13px 20px;font-size:13px;font-weight:600;color:#0f172a;${i ? 'border-top:1px solid #e8edfb;' : ''}">${esc(r.value)}</td>
+                 <td style="padding:14px 22px;font-size:13.5px;color:#64748b;${i ? 'border-top:1px solid #ebf0fc;' : ''}">${esc(r.label)}</td>
+                 <td align="right" style="padding:14px 22px;font-size:13.5px;font-weight:600;color:#0f172a;${i ? 'border-top:1px solid #ebf0fc;' : ''}">${esc(r.value)}</td>
                </tr>`,
              )
              .join('')}
@@ -99,10 +99,10 @@ export function renderBrandedEmail(opts: BrandedEmailOptions): string {
       : ''
 
   const ctaHtml = cta
-    ? `<table role="presentation" align="center" cellpadding="0" cellspacing="0" style="margin:8px auto 4px;">
+    ? `<table role="presentation" align="center" cellpadding="0" cellspacing="0" style="margin:10px auto 6px;">
          <tr>
-           <td style="border-radius:12px;background:linear-gradient(135deg,#1f43f5 0%,#3563ff 100%);">
-             <a href="${cta.url}" target="_blank" style="display:inline-block;padding:14px 34px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:12px;">${esc(cta.label)}</a>
+           <td style="border-radius:14px;background:linear-gradient(135deg,#1f43f5 0%,#3563ff 100%);box-shadow:0 8px 22px rgba(31,67,245,0.32);">
+             <a href="${cta.url}" target="_blank" style="display:inline-block;padding:15px 40px;font-size:15.5px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:14px;">${esc(cta.label)}</a>
            </td>
          </tr>
        </table>`
@@ -120,12 +120,12 @@ export function renderBrandedEmail(opts: BrandedEmailOptions): string {
   <meta name="color-scheme" content="light only" />
   <title>${esc(opts.heading)}</title>
 </head>
-<body style="margin:0;padding:0;background:#eef2fb;-webkit-font-smoothing:antialiased;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+<body style="margin:0;padding:0;background:#e9eef9;-webkit-font-smoothing:antialiased;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
   <span style="display:none!important;visibility:hidden;opacity:0;height:0;width:0;overflow:hidden;mso-hide:all;">${esc(opts.preheader)}</span>
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#eef2fb;padding:28px 16px;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#e9eef9;padding:32px 16px;">
     <tr>
       <td align="center">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 10px 40px rgba(31,67,245,0.10);">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:22px;overflow:hidden;box-shadow:0 18px 50px rgba(15,23,42,0.12);">
           <!-- Banner -->
           <tr>
             <td style="padding:0;line-height:0;">
@@ -136,8 +136,9 @@ export function renderBrandedEmail(opts: BrandedEmailOptions): string {
           </tr>
           <!-- Body -->
           <tr>
-            <td style="padding:36px 40px 8px;text-align:center;">
-              <h1 style="margin:0 0 14px;font-size:23px;font-weight:700;color:#0f172a;letter-spacing:-0.4px;">${esc(opts.heading)}</h1>
+            <td style="padding:40px 46px 12px;text-align:center;">
+              <h1 style="margin:0 0 16px;font-size:25px;font-weight:800;color:#0f172a;letter-spacing:-0.5px;">${esc(opts.heading)}</h1>
+              <div style="width:46px;height:4px;border-radius:99px;background:linear-gradient(90deg,#1f43f5,#3563ff);margin:0 auto 24px;"></div>
               ${introHtml}
               ${highlightHtml}
               <div style="text-align:left;">${rowsHtml}</div>
@@ -147,25 +148,25 @@ export function renderBrandedEmail(opts: BrandedEmailOptions): string {
           </tr>
           <!-- Divider -->
           <tr>
-            <td style="padding:30px 40px 0;">
-              <div style="border-top:1px solid #eef2fb;"></div>
+            <td style="padding:32px 46px 0;">
+              <div style="border-top:1px solid #edf1fa;"></div>
             </td>
           </tr>
           <!-- Support footer -->
           <tr>
-            <td style="padding:22px 40px 8px;text-align:center;">
-              <p style="margin:0 0 6px;font-size:13px;font-weight:600;color:#334155;">24/7 Support</p>
+            <td style="padding:24px 46px 8px;text-align:center;">
+              <p style="margin:0 0 6px;font-size:13px;font-weight:700;color:#334155;letter-spacing:0.2px;">24/7 Support</p>
               <p style="margin:0;font-size:13px;color:#64748b;">
-                ${esc(SUPPORT_PHONE)} &nbsp;|&nbsp;
-                <a href="mailto:${SUPPORT_EMAIL}" style="color:#1f43f5;text-decoration:none;">${esc(SUPPORT_EMAIL)}</a>
+                ${esc(SUPPORT_PHONE)} &nbsp;&middot;&nbsp;
+                <a href="mailto:${SUPPORT_EMAIL}" style="color:#1f43f5;text-decoration:none;font-weight:600;">${esc(SUPPORT_EMAIL)}</a>
               </p>
             </td>
           </tr>
           <!-- Footer -->
           <tr>
-            <td style="padding:14px 40px 34px;text-align:center;">
+            <td style="padding:16px 46px 36px;text-align:center;">
               <p style="margin:0 0 4px;font-size:12px;color:#94a3b8;">
-                Sent by <a href="${APP_URL}" target="_blank" style="color:#94a3b8;text-decoration:underline;">${esc(APP_NAME)}</a> · Workforce Fatigue &amp; Wellness Platform
+                Sent by <a href="${APP_URL}" target="_blank" style="color:#94a3b8;text-decoration:underline;">${esc(APP_NAME)}</a> &middot; Workforce Fatigue &amp; Wellness Platform
               </p>
               <p style="margin:0;font-size:12px;color:#cbd5e1;">© ${year} ${esc(APP_NAME)}. All rights reserved.</p>
             </td>
