@@ -326,6 +326,7 @@ const defaultBreakRequests: BreakRequest[] = [
     employee: 'Daniel Chen',
     reason: 'Elevated mental weariness threshold alarm.',
     requestedAt: '3m ago',
+    requestedAtIso: null,
     duration: 15,
     status: 'pending',
   },
@@ -334,6 +335,7 @@ const defaultBreakRequests: BreakRequest[] = [
     employee: 'Marcus Vance',
     reason: 'Hydration and active rest cycle.',
     requestedAt: '2h ago',
+    requestedAtIso: null,
     duration: 10,
     status: 'approved',
   }
