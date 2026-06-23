@@ -477,6 +477,65 @@ export function useSupportTickets() {
   return useQuery<Ticket[]>(fetchTickets, [])
 }
 
+export interface TicketReply {
+  id: string
+  body: string
+  author: string
+  mine: boolean
+  created: string
+}
+
+export interface MyTicket {
+  id: string
+  number: string
+  subject: string
+  category: string
+  priority: 'low' | 'medium' | 'high' | 'urgent'
+  status: 'open' | 'pending' | 'resolved' | 'closed'
+  escalated: boolean
+  created: string
+  replies: TicketReply[]
+}
+
+async function fetchMyTickets(userId?: string): Promise<MyTicket[]> {
+  if (!userId) return []
+  const { data, error } = await supabase
+    .from('support_tickets')
+    .select(`
+      id, number, subject, category, priority, status, escalated, created_at,
+      ticket_messages(id, body, author_id, created_at, profiles(full_name))
+    `)
+    .eq('opened_by', userId)
+    .order('created_at', { ascending: false })
+    .limit(50)
+  if (error) throw error
+
+  return (data ?? []).map((row: any) => ({
+    id: String(row.id),
+    number: row.number ?? '—',
+    subject: row.subject ?? '—',
+    category: row.category ?? 'General',
+    priority: (row.priority ?? 'medium') as MyTicket['priority'],
+    status: (row.status === 'in_progress' ? 'pending' : row.status ?? 'open') as MyTicket['status'],
+    escalated: row.escalated ?? false,
+    created: relativeTime(row.created_at),
+    replies: (row.ticket_messages ?? [])
+      .slice()
+      .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+      .map((m: any) => ({
+        id: String(m.id),
+        body: m.body ?? '',
+        author: m.author_id === userId ? 'You' : m.profiles?.full_name ?? 'Support',
+        mine: m.author_id === userId,
+        created: relativeTime(m.created_at),
+      })),
+  }))
+}
+
+export function useMyTickets(userId?: string) {
+  return useQuery<MyTicket[]>(() => fetchMyTickets(userId), [], [userId])
+}
+
 /** Manager escalates a ticket to the platform owner (SentinelAI). */
 export async function escalateTicket(id: string): Promise<void> {
   const { data, error } = await supabase
@@ -816,13 +875,26 @@ export async function updateAlertStatus(id: string, status: AlertStatus, note?: 
 }
 
 /** Update the signed-in user's own profile fields. */
-export async function saveProfile(input: { id: string; fullName?: string; phone?: string; title?: string }): Promise<void> {
+export async function saveProfile(input: { id: string; fullName?: string; phone?: string; title?: string; avatarUrl?: string }): Promise<void> {
   const patch: Record<string, unknown> = { updated_at: new Date().toISOString() }
   if (input.fullName !== undefined) patch.full_name = input.fullName
   if (input.phone !== undefined) patch.phone = input.phone
   if (input.title !== undefined) patch.title = input.title
+  if (input.avatarUrl !== undefined) patch.avatar_url = input.avatarUrl
   const { error } = await supabase.from('profiles').update(patch).eq('id', input.id)
   unwrap(error)
+}
+
+/** Upload a new avatar image to the public-assets bucket and return its URL. */
+export async function uploadAvatar(userId: string, file: File): Promise<string> {
+  const ext = (file.name.split('.').pop() || 'png').toLowerCase()
+  const path = `avatars/${userId}-${Date.now()}.${ext}`
+  const { error } = await supabase.storage
+    .from('public-assets')
+    .upload(path, file, { cacheControl: '3600', upsert: true, contentType: file.type || undefined })
+  if (error) throw new Error(error.message)
+  const { data } = supabase.storage.from('public-assets').getPublicUrl(path)
+  return data.publicUrl
 }
 
 /** Update an employee's monitoring mode (self or manager). */
@@ -1167,3 +1239,97 @@ export async function updateCompanyBilling(
     status: input.status,
   })
 }
+
+// ============================================================================
+// Platform settings (owner)
+// ============================================================================
+
+export interface PlatformSettings {
+  platformName: string
+  supportEmail: string
+  notifyBilling: boolean
+  notifySecurity: boolean
+  notifyProduct: boolean
+  notifyChurn: boolean
+}
+
+const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
+  platformName: 'SentinelAI',
+  supportEmail: 'info@sentinelai-software.co.za',
+  notifyBilling: true,
+  notifySecurity: true,
+  notifyProduct: false,
+  notifyChurn: true,
+}
+
+async function fetchPlatformSettings(): Promise<PlatformSettings> {
+  const { data, error } = await supabase
+    .from('platform_settings')
+    .select('platform_name, support_email, notify_billing, notify_security, notify_product, notify_churn')
+    .eq('id', true)
+    .maybeSingle()
+  if (error) throw error
+  if (!data) return DEFAULT_PLATFORM_SETTINGS
+  return {
+    platformName: data.platform_name ?? DEFAULT_PLATFORM_SETTINGS.platformName,
+    supportEmail: data.support_email ?? DEFAULT_PLATFORM_SETTINGS.supportEmail,
+    notifyBilling: data.notify_billing ?? true,
+    notifySecurity: data.notify_security ?? true,
+    notifyProduct: data.notify_product ?? false,
+    notifyChurn: data.notify_churn ?? true,
+  }
+}
+
+export function usePlatformSettings() {
+  return useQuery<PlatformSettings>(fetchPlatformSettings, DEFAULT_PLATFORM_SETTINGS, [])
+}
+
+/** Owner saves the platform settings (upserts the singleton row). */
+export async function savePlatformSettings(input: PlatformSettings): Promise<void> {
+  const { error } = await supabase.from('platform_settings').upsert(
+    {
+      id: true,
+      platform_name: input.platformName.trim() || 'SentinelAI',
+      support_email: input.supportEmail.trim(),
+      notify_billing: input.notifyBilling,
+      notify_security: input.notifySecurity,
+      notify_product: input.notifyProduct,
+      notify_churn: input.notifyChurn,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: 'id' },
+  )
+  unwrap(error)
+}
+
+// ============================================================================
+// Reports — email a generated report to the signed-in user
+// ============================================================================
+
+/** Emails a generated report (as a file attachment) to the signed-in user via
+ *  the `send-report` edge function. `contentBase64` is the base64-encoded file. */
+export async function emailReport(input: {
+  title: string
+  dateRange: string
+  filename: string
+  contentBase64: string
+  metrics?: { label: string; value: string }[]
+}): Promise<string> {
+  const { data, error } = await supabase.functions.invoke('send-report', { body: input })
+  if (error) {
+    let message = error.message
+    const ctx = (error as { context?: Response }).context
+    if (ctx && typeof ctx.json === 'function') {
+      try {
+        const parsed = await ctx.json()
+        if (parsed?.error) message = parsed.error
+      } catch {
+        /* ignore parse errors */
+      }
+    }
+    throw new Error(message)
+  }
+  if (data && data.ok === false) throw new Error(data.error ?? 'Could not email the report')
+  return (data?.sentTo as string) ?? ''
+}
+

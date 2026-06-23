@@ -60,14 +60,14 @@ function inviteEmailOpts(opts: {
     : `as a <strong style="color:#1f43f5;">${roleLabel}</strong>`
   return {
     preheader: `${intro} ${scope.replace(/<[^>]+>/g, '')}. Sign in with ${invitee} to get started.`,
-    heading: "You're invited",
+    heading: 'Welcome to SentinelAI',
     intro: [
       `${intro} ${scope}.`,
       `Sign in with this email address — <strong style="color:#0f172a;">${invitee}</strong> — and we'll send a one-time code to verify it's you. No password required.`,
     ],
     banner: 'welcome',
     cta: { label: `Sign in to ${APP_NAME}`, url: signInUrl },
-    footnote: "If you weren't expecting this invitation, you can safely ignore this email.",
+    footnote: "If you weren't expecting this, you can safely ignore this email.",
   }
 }
 
@@ -184,7 +184,7 @@ Deno.serve(async (req: Request) => {
     to: email,
     subject: companyName
       ? `You've been added to ${companyName} on ${APP_NAME}`
-      : `You've been invited to ${APP_NAME}`,
+      : `You've been added to ${APP_NAME}`,
     opts: inviteEmailOpts({
       signInUrl,
       roleLabel: ROLE_LABELS[role],

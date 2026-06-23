@@ -1,13 +1,27 @@
 import { useState } from 'react'
-import { ChevronDown, LifeBuoy, MessageSquare, Search, Send, ShieldCheck } from 'lucide-react'
+import { ChevronDown, Inbox, LifeBuoy, MessageSquare, Search, Send, ShieldCheck } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Card, CardHeader, CardBody } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, Select, Textarea } from '@/components/ui/Input'
 import { Badge } from '@/components/ui/Badge'
-import { useFaqs, submitSupportTicket } from '@/lib/api'
+import { useFaqs, submitSupportTicket, useMyTickets } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { cn } from '@/lib/utils'
+
+const ticketTone: Record<'open' | 'pending' | 'resolved' | 'closed', 'info' | 'warning' | 'success' | 'neutral'> = {
+  open: 'info',
+  pending: 'warning',
+  resolved: 'success',
+  closed: 'neutral',
+}
+
+const ticketStatusLabel: Record<'open' | 'pending' | 'resolved' | 'closed', string> = {
+  open: 'Open',
+  pending: 'In progress',
+  resolved: 'Resolved',
+  closed: 'Closed',
+}
 
 export function EmployeeSupport() {
   const [openFaq, setOpenFaq] = useState<number | null>(0)
@@ -15,6 +29,8 @@ export function EmployeeSupport() {
   const [sent, setSent] = useState(false)
   const { data: faqs } = useFaqs()
   const { user } = useAuth()
+  const { data: myTickets, refetch: refetchTickets } = useMyTickets(user?.id)
+  const [openTicket, setOpenTicket] = useState<string | null>(null)
   const [subject, setSubject] = useState('')
   const [category, setCategory] = useState('technical')
   const [priority, setPriority] = useState<'low' | 'medium' | 'high' | 'urgent'>('medium')
@@ -42,6 +58,7 @@ export function EmployeeSupport() {
       setSubject('')
       setMessage('')
       setSent(true)
+      refetchTickets()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not submit ticket')
     } finally {
@@ -124,6 +141,56 @@ export function EmployeeSupport() {
           </CardBody>
         </Card>
       </div>
+
+      <Card className="mt-5">
+        <CardHeader title="My tickets" subtitle="Track the status of issues you've reported" icon={<Inbox className="h-4 w-4" />} />
+        <CardBody>
+          {myTickets.length === 0 ? (
+            <div className="flex flex-col items-center gap-2 py-10 text-center">
+              <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-surface-muted text-ink-subtle"><Inbox className="h-6 w-6" /></span>
+              <p className="text-sm font-medium text-ink">No tickets yet</p>
+              <p className="text-sm text-ink-muted">Issues you report will appear here so you can follow their progress.</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-line">
+              {myTickets.map((t) => (
+                <div key={t.id} className="py-3">
+                  <button
+                    onClick={() => setOpenTicket(openTicket === t.id ? null : t.id)}
+                    className="flex w-full items-center gap-3 text-left"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="truncate text-sm font-medium text-ink">{t.subject}</span>
+                        {t.escalated && <Badge tone="warning">Escalated</Badge>}
+                      </div>
+                      <p className="mt-0.5 text-xs text-ink-subtle">{t.number} · {t.created}</p>
+                    </div>
+                    <Badge tone={ticketTone[t.status]}>{ticketStatusLabel[t.status]}</Badge>
+                    <ChevronDown className={cn('h-4 w-4 shrink-0 text-ink-subtle transition-transform', openTicket === t.id && 'rotate-180')} />
+                  </button>
+                  {openTicket === t.id && (
+                    <div className="mt-3 space-y-3 rounded-xl bg-surface-subtle p-3">
+                      {t.replies.length === 0 ? (
+                        <p className="text-sm text-ink-muted">No messages yet.</p>
+                      ) : (
+                        t.replies.map((r) => (
+                          <div key={r.id} className={cn('flex flex-col', r.mine ? 'items-end' : 'items-start')}>
+                            <div className={cn('max-w-[85%] rounded-xl px-3 py-2 text-sm', r.mine ? 'bg-brand-600 text-white' : 'bg-surface text-ink ring-1 ring-line')}>
+                              {r.body}
+                            </div>
+                            <span className="mt-1 text-[11px] text-ink-subtle">{r.author} · {r.created}</span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </CardBody>
+      </Card>
     </div>
   )
 }
