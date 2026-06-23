@@ -47,6 +47,7 @@ function otpEmailOpts(code: string): BrandedEmailOptions {
     heading: "Verify it's you",
     intro: `Enter the code below to securely sign in to your workspace. This code expires in <strong style="color:#1f43f5;">${OTP_TTL_MINUTES} minutes</strong>.`,
     highlight: codeBox,
+    banner: 'meet-agent',
     cta: { label: `Open ${APP_NAME}`, url: APP_URL },
     footnote:
       "Didn't request this code? You can safely ignore this email — your account is still secure.",

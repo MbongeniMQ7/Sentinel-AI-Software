@@ -65,6 +65,7 @@ function inviteEmailOpts(opts: {
       `${intro} ${scope}.`,
       `Sign in with this email address — <strong style="color:#0f172a;">${invitee}</strong> — and we'll send a one-time code to verify it's you. No password required.`,
     ],
+    banner: 'welcome',
     cta: { label: `Sign in to ${APP_NAME}`, url: signInUrl },
     footnote: "If you weren't expecting this invitation, you can safely ignore this email.",
   }
