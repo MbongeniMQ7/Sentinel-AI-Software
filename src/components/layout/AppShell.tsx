@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
   Bell,
@@ -15,9 +15,11 @@ import {
 import { cn } from '@/lib/utils'
 import { useAuth, type Role } from '@/lib/auth'
 import { useTheme } from '@/lib/theme'
-import { navConfig, roleMeta } from '@/lib/nav'
+import { navConfig, roleMeta, type NavGroup } from '@/lib/nav'
+import { useAlerts } from '@/lib/api'
 import { Avatar } from '@/components/ui/Avatar'
 import { logoUrl } from '@/components/shared/Logo'
+import { LanguageSwitcher } from '@/components/shared/LanguageSwitcher'
 import { Button } from '@/components/ui/Button'
 import { Dropdown, DropdownDivider, DropdownItem } from '@/components/ui/Dropdown'
 import { Input } from '@/components/ui/Input'
@@ -26,13 +28,67 @@ interface AppShellProps {
   role: Role
 }
 
+function GlobalSearch({ groups }: { groups: NavGroup[] }) {
+  const navigate = useNavigate()
+  const [query, setQuery] = useState('')
+  const [open, setOpen] = useState(false)
+  const items = useMemo(
+    () => groups.flatMap((g) => g.items.map((i) => ({ ...i, group: g.title }))),
+    [groups],
+  )
+  const results = useMemo(
+    () => (query ? items.filter((i) => i.label.toLowerCase().includes(query.toLowerCase())) : []),
+    [query, items],
+  )
+  const go = (to: string) => {
+    setQuery('')
+    setOpen(false)
+    navigate(to)
+  }
+  return (
+    <div className="relative hidden max-w-md flex-1 sm:block">
+      <Input
+        icon={<Search className="h-4 w-4" />}
+        placeholder="Search pages…"
+        value={query}
+        onChange={(e) => { setQuery(e.target.value); setOpen(true) }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        onKeyDown={(e) => { if (e.key === 'Enter' && results[0]) go(results[0].to) }}
+        className="h-9 bg-surface-subtle"
+      />
+      {open && query && (
+        <div className="absolute left-0 right-0 top-11 z-40 overflow-hidden rounded-xl border border-line bg-surface shadow-pop">
+          {results.length === 0 ? (
+            <p className="px-3 py-3 text-sm text-ink-subtle">No pages match “{query}”</p>
+          ) : (
+            results.slice(0, 8).map((r) => (
+              <button
+                key={r.to}
+                onMouseDown={() => go(r.to)}
+                className="flex w-full items-center gap-3 px-3 py-2 text-left text-sm hover:bg-surface-muted"
+              >
+                <r.icon className="h-4 w-4 text-ink-subtle" />
+                <span className="flex-1 text-ink">{r.label}</span>
+                <span className="text-[11px] text-ink-subtle">{r.group}</span>
+              </button>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function AppShell({ role }: AppShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const { user, logout } = useAuth()
   const { theme, toggle } = useTheme()
+  const { data: alerts } = useAlerts()
   const navigate = useNavigate()
   const meta = roleMeta[role]
   const groups = navConfig[role]
+  const notifications = alerts.filter((a) => a.status !== 'resolved').slice(0, 5)
 
   const handleLogout = async () => {
     await logout()
@@ -40,7 +96,7 @@ export function AppShell({ role }: AppShellProps) {
   }
 
   const settingsPath = { employee: '/user/settings', manager: '/admin/settings', owner: '/owner/settings' }[role]
-  const profilePath = { employee: '/user/profile', manager: '/admin/settings', owner: '/owner/settings' }[role]
+  const profilePath = '/user/profile'
 
   return (
     <div className="flex h-full bg-surface-subtle">
@@ -119,11 +175,10 @@ export function AppShell({ role }: AppShellProps) {
             <Menu className="h-5 w-5 text-ink-muted" />
           </button>
 
-          <div className="hidden max-w-md flex-1 sm:block">
-            <Input icon={<Search className="h-4 w-4" />} placeholder="Search people, alerts, devices…" className="h-9 bg-surface-subtle" />
-          </div>
+          <GlobalSearch groups={groups} />
 
           <div className="ml-auto flex items-center gap-1.5">
+            <LanguageSwitcher className="hidden sm:block" />
             <Button variant="ghost" size="icon" onClick={toggle} aria-label="Toggle theme">
               {theme === 'dark' ? <Sun className="h-[18px] w-[18px]" /> : <Moon className="h-[18px] w-[18px]" />}
             </Button>
@@ -132,7 +187,9 @@ export function AppShell({ role }: AppShellProps) {
               trigger={
                 <Button variant="ghost" size="icon" className="relative" aria-label="Notifications">
                   <Bell className="h-[18px] w-[18px]" />
-                  <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-rose-500 ring-2 ring-surface" />
+                  {notifications.length > 0 && (
+                    <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-rose-500 ring-2 ring-surface" />
+                  )}
                 </Button>
               }
               className="w-80"
@@ -141,20 +198,29 @@ export function AppShell({ role }: AppShellProps) {
                 <p className="text-sm font-semibold text-ink">Notifications</p>
               </div>
               <DropdownDivider />
-              {[
-                { t: 'Critical fatigue alert', d: 'Marcus Cole · Zone 3', time: '2m' },
-                { t: 'Break request approved', d: 'Your 15m break starts now', time: '12m' },
-                { t: 'New report ready', d: 'Weekly wellness summary', time: '1h' },
-              ].map((n) => (
-                <button key={n.t} className="flex w-full items-start gap-3 rounded-lg px-3 py-2 text-left hover:bg-surface-muted">
-                  <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-brand-500" />
-                  <span className="min-w-0">
-                    <span className="block text-sm font-medium text-ink">{n.t}</span>
-                    <span className="block truncate text-xs text-ink-muted">{n.d}</span>
-                  </span>
-                  <span className="ml-auto shrink-0 text-[11px] text-ink-subtle">{n.time}</span>
-                </button>
-              ))}
+              {notifications.length === 0 ? (
+                <p className="px-3 py-4 text-sm text-ink-subtle">You're all caught up.</p>
+              ) : (
+                notifications.map((n) => (
+                  <button key={n.id} className="flex w-full items-start gap-3 rounded-lg px-3 py-2 text-left hover:bg-surface-muted">
+                    <span
+                      className={cn(
+                        'mt-1 h-2 w-2 shrink-0 rounded-full',
+                        n.severity === 'critical' || n.severity === 'high'
+                          ? 'bg-rose-500'
+                          : n.severity === 'moderate'
+                            ? 'bg-amber-500'
+                            : 'bg-brand-500',
+                      )}
+                    />
+                    <span className="min-w-0">
+                      <span className="block text-sm font-medium text-ink">{n.message}</span>
+                      <span className="block truncate text-xs text-ink-muted">{n.employee} · {n.location}</span>
+                    </span>
+                    <span className="ml-auto shrink-0 text-[11px] text-ink-subtle">{n.timestamp}</span>
+                  </button>
+                ))
+              )}
             </Dropdown>
 
             <Dropdown
@@ -170,9 +236,11 @@ export function AppShell({ role }: AppShellProps) {
                 <p className="text-xs text-ink-subtle">{user?.email}</p>
               </div>
               <DropdownDivider />
-              <DropdownItem icon={<UserCog className="h-4 w-4" />} onClick={() => navigate(profilePath)}>
-                Profile
-              </DropdownItem>
+              {role === 'employee' && (
+                <DropdownItem icon={<UserCog className="h-4 w-4" />} onClick={() => navigate(profilePath)}>
+                  Profile
+                </DropdownItem>
+              )}
               <DropdownItem icon={<Settings className="h-4 w-4" />} onClick={() => navigate(settingsPath)}>
                 Settings
               </DropdownItem>

@@ -22,6 +22,20 @@ export function ManagerAudit() {
     [query, action, auditLogs],
   )
 
+  const exportCsv = () => {
+    const headers = ['Actor', 'Action', 'Target', 'IP address', 'When']
+    const escape = (v: string) => `"${String(v).replace(/"/g, '""')}"`
+    const rows = filtered.map((l) => [l.actor, l.action, l.target, l.ip, l.timestamp].map(escape).join(','))
+    const csv = [headers.join(','), ...rows].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `audit-logs-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   const columns: Column<Log>[] = [
     {
       key: 'actor',
@@ -44,7 +58,7 @@ export function ManagerAudit() {
       <PageHeader
         title="Audit Logs"
         description="Immutable record of activity across your workspace."
-        actions={<Button variant="outline" size="sm"><Download className="h-4 w-4" /> Export logs</Button>}
+        actions={<Button variant="outline" size="sm" onClick={exportCsv} disabled={filtered.length === 0}><Download className="h-4 w-4" /> Export logs</Button>}
       />
 
       <Card>

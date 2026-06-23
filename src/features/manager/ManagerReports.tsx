@@ -26,7 +26,7 @@ export function ManagerReports() {
         chart={
           <>
             <p className="mb-2 text-sm font-semibold text-ink">Fatigue by department</p>
-            <BarSeries data={departmentFatigue} xKey="department" series={[{ key: 'avgFatigue', label: 'Avg fatigue', color: '#3563ff' }]} height={200} />
+            <BarSeries data={departmentFatigue} xKey="department" series={[{ key: 'avgFatigue', label: 'Avg fatigue', color: '#567c8d' }]} height={200} />
           </>
         }
       />

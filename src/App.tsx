@@ -31,6 +31,7 @@ import { ManagerReports } from '@/features/manager/ManagerReports'
 import { ManagerOnboarding } from '@/features/manager/ManagerOnboarding'
 import { ManagerHierarchy } from '@/features/manager/ManagerHierarchy'
 import { ManagerAudit } from '@/features/manager/ManagerAudit'
+import { ManagerSupport } from '@/features/manager/ManagerSupport'
 import { ManagerSettings } from '@/features/manager/ManagerSettings'
 
 // Owner
@@ -39,10 +40,13 @@ import { OwnerActivity } from '@/features/owner/OwnerActivity'
 import { OwnerUsers } from '@/features/owner/OwnerUsers'
 import { OwnerCompanies } from '@/features/owner/OwnerCompanies'
 import { OwnerFleet } from '@/features/owner/OwnerFleet'
-import { OwnerBilling } from '@/features/owner/OwnerBilling'
 import { OwnerRevenue } from '@/features/owner/OwnerRevenue'
 import { OwnerReports } from '@/features/owner/OwnerReports'
 import { OwnerSettings } from '@/features/owner/OwnerSettings'
+import { OwnerAlerts } from '@/features/owner/OwnerAlerts'
+import { OwnerIssues } from '@/features/owner/OwnerIssues'
+import { OwnerAudit } from '@/features/owner/OwnerAudit'
+import { OwnerCreateManager } from '@/features/owner/OwnerCreateManager'
 
 function RequireRole({ role }: { role: Role }) {
   const { user, loading } = useAuth()
@@ -90,6 +94,7 @@ export default function App() {
         <Route path="analytics" element={<ManagerAnalytics />} />
         <Route path="devices" element={<ManagerDevices />} />
         <Route path="approvals" element={<ManagerApprovals />} />
+        <Route path="support" element={<ManagerSupport />} />
         <Route path="reports" element={<ManagerReports />} />
         <Route path="onboarding" element={<ManagerOnboarding />} />
         <Route path="hierarchy" element={<ManagerHierarchy />} />
@@ -105,9 +110,12 @@ export default function App() {
         <Route path="users" element={<OwnerUsers />} />
         <Route path="companies" element={<OwnerCompanies />} />
         <Route path="fleet" element={<OwnerFleet />} />
-        <Route path="billing" element={<OwnerBilling />} />
         <Route path="revenue" element={<OwnerRevenue />} />
         <Route path="reports" element={<OwnerReports />} />
+        <Route path="alerts" element={<OwnerAlerts />} />
+        <Route path="issues" element={<OwnerIssues />} />
+        <Route path="audit" element={<OwnerAudit />} />
+        <Route path="create-manager" element={<OwnerCreateManager />} />
         <Route path="settings" element={<OwnerSettings />} />
       </Route>
 

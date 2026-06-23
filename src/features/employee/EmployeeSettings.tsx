@@ -5,10 +5,14 @@ import { Card, CardHeader, CardBody, CardFooter } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Switch } from '@/components/ui/Switch'
 import { Field, Input } from '@/components/ui/Input'
+import { Badge } from '@/components/ui/Badge'
 import { useTheme } from '@/lib/theme'
 import { useAuth } from '@/lib/auth'
 import { useNotificationPreferences, saveNotificationPreferences } from '@/lib/api'
+import { requestOtp, verifyOtp, supabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
+
+const twoFactorKey = (id?: string) => `sentinel.2fa.${id ?? 'anon'}`
 
 export function EmployeeSettings() {
   const { theme, setTheme } = useTheme()
@@ -17,6 +21,81 @@ export function EmployeeSettings() {
   const [notif, setNotif] = useState({ fatigue: true, breaks: true, weekly: true, email: true, push: true, sms: false })
   const [saving, setSaving] = useState(false)
   const [status, setStatus] = useState<string | null>(null)
+
+  // Security state
+  const [twoFactor, setTwoFactor] = useState(false)
+  const [otpStage, setOtpStage] = useState<'idle' | 'sent' | 'verifying'>('idle')
+  const [otpCode, setOtpCode] = useState('')
+  const [secStatus, setSecStatus] = useState<{ tone: 'ok' | 'err'; msg: string } | null>(null)
+  const [secBusy, setSecBusy] = useState(false)
+  const [newPassword, setNewPassword] = useState('')
+
+  useEffect(() => {
+    setTwoFactor(localStorage.getItem(twoFactorKey(user?.id)) === 'on')
+  }, [user?.id])
+
+  const toggleTwoFactor = async (next: boolean) => {
+    setSecStatus(null)
+    if (!next) {
+      localStorage.removeItem(twoFactorKey(user?.id))
+      setTwoFactor(false)
+      setOtpStage('idle')
+      setOtpCode('')
+      setSecStatus({ tone: 'ok', msg: 'Two-factor authentication disabled.' })
+      return
+    }
+    if (!user?.email) return
+    setSecBusy(true)
+    try {
+      await requestOtp(user.email)
+      setOtpStage('sent')
+      setSecStatus({ tone: 'ok', msg: `We sent a 6-digit code to ${user.email}. Enter it to enable 2FA.` })
+    } catch (e) {
+      setSecStatus({ tone: 'err', msg: e instanceof Error ? e.message : 'Could not send the code' })
+    } finally {
+      setSecBusy(false)
+    }
+  }
+
+  const confirmTwoFactor = async () => {
+    if (!user?.email || otpCode.length !== 6) return
+    setOtpStage('verifying')
+    setSecStatus(null)
+    try {
+      await verifyOtp(user.email, otpCode)
+      localStorage.setItem(twoFactorKey(user?.id), 'on')
+      setTwoFactor(true)
+      setOtpStage('idle')
+      setOtpCode('')
+      setSecStatus({ tone: 'ok', msg: 'Two-factor authentication is now enabled.' })
+    } catch (e) {
+      setOtpStage('sent')
+      setSecStatus({ tone: 'err', msg: e instanceof Error ? e.message : 'That code was not valid' })
+    }
+  }
+
+  const updateSecurity = async () => {
+    setSecStatus(null)
+    if (!newPassword) {
+      setSecStatus({ tone: 'err', msg: 'Enter a new password to update.' })
+      return
+    }
+    if (newPassword.length < 8) {
+      setSecStatus({ tone: 'err', msg: 'Password must be at least 8 characters.' })
+      return
+    }
+    setSecBusy(true)
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword })
+      if (error) throw error
+      setNewPassword('')
+      setSecStatus({ tone: 'ok', msg: 'Password updated successfully.' })
+    } catch (e) {
+      setSecStatus({ tone: 'err', msg: e instanceof Error ? e.message : 'Could not update password' })
+    } finally {
+      setSecBusy(false)
+    }
+  }
 
   useEffect(() => {
     setNotif({
@@ -105,25 +184,45 @@ export function EmployeeSettings() {
           <CardHeader title="Security" subtitle="Protect your account" icon={<Shield className="h-4 w-4" />} />
           <CardBody className="space-y-5">
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Current password"><Input type="password" defaultValue="password" icon={<KeyRound className="h-4 w-4" />} /></Field>
-              <Field label="New password"><Input type="password" placeholder="••••••••" icon={<KeyRound className="h-4 w-4" />} /></Field>
+              <Field label="New password"><Input type="password" placeholder="At least 8 characters" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} icon={<KeyRound className="h-4 w-4" />} /></Field>
             </div>
-            <div className="flex items-center justify-between rounded-xl border border-line p-4">
-              <div className="flex items-center gap-3">
-                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40">
-                  <Smartphone className="h-4 w-4" />
-                </span>
-                <div>
-                  <p className="text-sm font-medium text-ink">Two-factor authentication</p>
-                  <p className="text-xs text-ink-muted">Add an extra layer of security</p>
+            <div className="rounded-xl border border-line p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40">
+                    <Smartphone className="h-4 w-4" />
+                  </span>
+                  <div>
+                    <p className="text-sm font-medium text-ink">Two-factor authentication {twoFactor && <Badge tone="success" className="ml-1">On</Badge>}</p>
+                    <p className="text-xs text-ink-muted">Verify a code sent to your email each time you sign in</p>
+                  </div>
                 </div>
+                <Switch label="" checked={twoFactor} onChange={toggleTwoFactor} />
               </div>
-              <Switch label="" checked onChange={() => {}} />
+              {otpStage !== 'idle' && (
+                <div className="mt-4 flex flex-col gap-3 border-t border-line pt-4 sm:flex-row sm:items-end">
+                  <Field label="Enter the 6-digit code" className="sm:max-w-[12rem]">
+                    <Input
+                      inputMode="numeric"
+                      maxLength={6}
+                      placeholder="••••••"
+                      value={otpCode}
+                      onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    />
+                  </Field>
+                  <Button onClick={confirmTwoFactor} disabled={otpCode.length !== 6 || otpStage === 'verifying'}>
+                    {otpStage === 'verifying' ? 'Verifying…' : 'Confirm code'}
+                  </Button>
+                  <Button variant="outline" onClick={() => user?.email && requestOtp(user.email)}>Resend</Button>
+                </div>
+              )}
             </div>
           </CardBody>
           <CardFooter className="justify-end">
-            <Button variant="outline">Cancel</Button>
-            <Button>Update security</Button>
+            {secStatus && (
+              <span className={cn('mr-auto text-sm', secStatus.tone === 'ok' ? 'text-emerald-600' : 'text-rose-600')}>{secStatus.msg}</span>
+            )}
+            <Button onClick={updateSecurity} disabled={secBusy}>{secBusy ? 'Updating…' : 'Update security'}</Button>
           </CardFooter>
         </Card>
       </div>

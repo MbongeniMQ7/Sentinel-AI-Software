@@ -59,7 +59,7 @@ export function OwnerRevenue() {
         <Card>
           <CardHeader title="MRR movement" subtitle="New, expansion & churned revenue ($K)" />
           <CardBody>
-            <BarSeries data={mrrMovement} xKey="month" series={[{ key: 'new', label: 'New', color: '#10b981' }, { key: 'expansion', label: 'Expansion', color: '#3563ff' }, { key: 'churned', label: 'Churned', color: '#f43f5e' }]} height={260} />
+            <BarSeries data={mrrMovement} xKey="month" series={[{ key: 'new', label: 'New', color: '#10b981' }, { key: 'expansion', label: 'Expansion', color: '#567c8d' }, { key: 'churned', label: 'Churned', color: '#f43f5e' }]} height={260} />
           </CardBody>
         </Card>
         <Card>

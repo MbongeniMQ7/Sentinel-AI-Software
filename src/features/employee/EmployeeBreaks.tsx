@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Coffee, Pause, Play, Plus, RotateCcw, History } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Card, CardHeader, CardBody } from '@/components/ui/Card'
@@ -21,6 +21,7 @@ const columns: Column<BreakRequest>[] = [
 export function EmployeeBreaks() {
   const [open, setOpen] = useState(false)
   const [running, setRunning] = useState(false)
+  const [breakMinutes, setBreakMinutes] = useState(15)
   const [seconds, setSeconds] = useState(15 * 60)
   const { user } = useAuth()
   const { data: breakRequests, refetch } = useBreakRequests()
@@ -28,6 +29,54 @@ export function EmployeeBreaks() {
   const [duration, setDuration] = useState('15')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const myBreaks = useMemo(
+    () => breakRequests.filter((b) => b.employee === user?.name),
+    [breakRequests, user?.name],
+  )
+
+  const stats = useMemo(() => {
+    const now = new Date()
+    const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const startWeek = new Date(startToday)
+    startWeek.setDate(startToday.getDate() - ((startToday.getDay() + 6) % 7)) // Monday
+    let breaksToday = 0
+    let minutesToday = 0
+    let thisWeek = 0
+    let approved = 0
+    for (const b of myBreaks) {
+      const d = b.requestedAtIso ? new Date(b.requestedAtIso) : null
+      if (d && d >= startToday) {
+        breaksToday += 1
+        minutesToday += b.duration
+      }
+      if (d && d >= startWeek) thisWeek += 1
+      if (b.status === 'approved') approved += 1
+    }
+    const compliance = myBreaks.length ? Math.round((approved / myBreaks.length) * 100) : 100
+    return { breaksToday, minutesToday, thisWeek, compliance }
+  }, [myBreaks])
+
+  const logCompletedBreak = async () => {
+    if (!user?.companyId) return
+    try {
+      await submitBreakRequest({
+        employeeId: user.id,
+        companyId: user.companyId,
+        reason: `Timed break (${breakMinutes} min)`,
+        durationMin: breakMinutes,
+      })
+      refetch()
+    } catch {
+      /* non-blocking: timer break logging is best-effort */
+    }
+  }
+
+  const startPreset = (m: number) => {
+    setBreakMinutes(m)
+    setSeconds(m * 60)
+    setRunning(false)
+  }
 
   const submit = async () => {
     if (!user?.companyId) {
@@ -60,9 +109,19 @@ export function EmployeeBreaks() {
     return () => clearInterval(id)
   }, [running])
 
+  // When a running timer reaches zero, stop and log the completed break.
+  useEffect(() => {
+    if (running && seconds === 0) {
+      setRunning(false)
+      logCompletedBreak()
+      setSeconds(breakMinutes * 60)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [running, seconds])
+
   const mm = String(Math.floor(seconds / 60)).padStart(2, '0')
   const ss = String(seconds % 60).padStart(2, '0')
-  const pct = (1 - seconds / (15 * 60)) * 100
+  const pct = (1 - seconds / (breakMinutes * 60)) * 100
   const circ = 2 * Math.PI * 70
 
   return (
@@ -80,7 +139,7 @@ export function EmployeeBreaks() {
       <div className="grid gap-5 lg:grid-cols-3">
         {/* Timer */}
         <Card className="lg:col-span-1">
-          <CardHeader title="Break timer" subtitle="15-minute rest period" icon={<Coffee className="h-4 w-4" />} />
+          <CardHeader title="Break timer" subtitle={`${breakMinutes}-minute rest period`} icon={<Coffee className="h-4 w-4" />} />
           <CardBody className="flex flex-col items-center">
             <div className="relative flex h-44 w-44 items-center justify-center">
               <svg className="h-44 w-44 -rotate-90">
@@ -90,7 +149,7 @@ export function EmployeeBreaks() {
                   cy="88"
                   r="70"
                   fill="none"
-                  stroke="#3563ff"
+                  stroke="#567c8d"
                   strokeWidth="12"
                   strokeLinecap="round"
                   strokeDasharray={circ}
@@ -108,7 +167,7 @@ export function EmployeeBreaks() {
                 {running ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
                 {running ? 'Pause' : 'Start'}
               </Button>
-              <Button variant="ghost" size="icon" onClick={() => { setSeconds(15 * 60); setRunning(false) }} aria-label="Reset">
+              <Button variant="ghost" size="icon" onClick={() => { setSeconds(breakMinutes * 60); setRunning(false) }} aria-label="Reset">
                 <RotateCcw className="h-4 w-4" />
               </Button>
             </div>
@@ -119,10 +178,10 @@ export function EmployeeBreaks() {
         <div className="space-y-5 lg:col-span-2">
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             {[
-              { label: 'Breaks today', value: '2' },
-              { label: 'Total time', value: '35m' },
-              { label: 'This week', value: '11' },
-              { label: 'Compliance', value: '100%' },
+              { label: 'Breaks today', value: String(stats.breaksToday) },
+              { label: 'Total time', value: `${stats.minutesToday}m` },
+              { label: 'This week', value: String(stats.thisWeek) },
+              { label: 'Compliance', value: `${stats.compliance}%` },
             ].map((s) => (
               <Card key={s.label} className="p-4">
                 <p className="text-2xl font-bold text-ink">{s.value}</p>
@@ -136,7 +195,7 @@ export function EmployeeBreaks() {
               {[5, 10, 15, 30].map((m) => (
                 <button
                   key={m}
-                  onClick={() => { setSeconds(m * 60); setRunning(false) }}
+                  onClick={() => startPreset(m)}
                   className="rounded-xl border border-line p-4 text-center transition-colors hover:border-brand-300 hover:bg-surface-muted"
                 >
                   <p className="text-lg font-semibold text-ink">{m}m</p>
@@ -151,7 +210,7 @@ export function EmployeeBreaks() {
       <Card className="mt-5">
         <CardHeader title="Break history" icon={<History className="h-4 w-4" />} />
         <CardBody className="p-0">
-          <DataTable columns={columns} data={breakRequests} rowKey={(r) => r.id} />
+          <DataTable columns={columns} data={myBreaks} rowKey={(r) => r.id} />
         </CardBody>
       </Card>
 
