@@ -103,7 +103,7 @@ export function OwnerUsers() {
         fullName: inviteName,
         phone: invitePhone,
       })
-      setInviteMsg(`Invitation sent to ${inviteEmail}.`)
+      setInviteMsg(`${inviteEmail} was added to the platform.`)
       setInviteEmail('')
       setInviteName('')
       setInvitePhone('')
@@ -177,7 +177,7 @@ export function OwnerUsers() {
       <PageHeader
         title="User Management"
         description="Global directory of every user across the platform."
-        actions={<Button size="sm" onClick={() => setAddOpen(true)}><UserPlus className="h-4 w-4" /> Invite user</Button>}
+        actions={<Button size="sm" onClick={() => setAddOpen(true)}><UserPlus className="h-4 w-4" /> Add user</Button>}
       />
 
       <div className="mb-5 grid gap-4 sm:grid-cols-4">
@@ -210,9 +210,9 @@ export function OwnerUsers() {
       <Modal
         open={addOpen}
         onClose={() => setAddOpen(false)}
-        title="Invite user"
-        description="Send an invitation to join the platform."
-        footer={<><Button variant="outline" onClick={() => setAddOpen(false)} disabled={sending}>Close</Button><Button onClick={sendInvite} disabled={sending}>{sending ? 'Sending…' : 'Send invite'}</Button></>}
+        title="Add user to platform"
+        description="Create an account and grant platform access."
+        footer={<><Button variant="outline" onClick={() => setAddOpen(false)} disabled={sending}>Close</Button><Button onClick={sendInvite} disabled={sending}>{sending ? 'Adding…' : 'Add user'}</Button></>}
       >
         <div className="space-y-4">
           {inviteErr && <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-600 dark:bg-rose-950/40">{inviteErr}</p>}

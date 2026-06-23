@@ -208,9 +208,21 @@ export async function sendBrandedEmail(input: {
   to: string | string[]
   subject: string
   opts: BrandedEmailOptions
+  /** Optional file attachments. `content` must be base64-encoded. */
+  attachments?: { filename: string; content: string }[]
 }): Promise<boolean> {
   const to = Array.isArray(input.to) ? input.to : [input.to]
   if (!to.length) return false
+
+  const body: Record<string, unknown> = {
+    from: `${APP_NAME} <${FROM_EMAIL}>`,
+    reply_to: REPLY_TO,
+    to,
+    subject: input.subject,
+    html: renderBrandedEmail(input.opts),
+    text: renderBrandedText(input.opts),
+  }
+  if (input.attachments?.length) body.attachments = input.attachments
 
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -218,14 +230,7 @@ export async function sendBrandedEmail(input: {
       Authorization: `Bearer ${input.resendKey}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      from: `${APP_NAME} <${FROM_EMAIL}>`,
-      reply_to: REPLY_TO,
-      to,
-      subject: input.subject,
-      html: renderBrandedEmail(input.opts),
-      text: renderBrandedText(input.opts),
-    }),
+    body: JSON.stringify(body),
   })
 
   if (!res.ok) {
