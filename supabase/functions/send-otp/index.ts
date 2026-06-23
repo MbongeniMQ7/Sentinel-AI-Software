@@ -85,7 +85,7 @@ Deno.serve(async (req: Request) => {
   // (i.e. it exists in account_roles). This blocks unknown emails entirely.
   const { data: account, error: accountErr } = await supabase
     .from('account_roles')
-    .select('email')
+    .select('email, is_active')
     .eq('email', email)
     .maybeSingle()
 
@@ -93,6 +93,12 @@ Deno.serve(async (req: Request) => {
   if (!account) {
     return jsonResponse(
       { error: "This email isn't registered. Ask your administrator to invite you first." },
+      403,
+    )
+  }
+  if (account.is_active === false) {
+    return jsonResponse(
+      { error: 'This account has been suspended. Please contact your administrator.' },
       403,
     )
   }

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Download, MoreVertical, Search, ShieldCheck, UserPlus, Users } from 'lucide-react'
+import { Ban, Download, KeyRound, MoreVertical, Search, ShieldCheck, UserCheck, UserPlus, Users } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Card, CardBody } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -12,7 +12,15 @@ import { DataTable, type Column } from '@/components/ui/DataTable'
 import { EmptyState } from '@/components/shared/States'
 import { StatusBadge } from '@/components/shared/Badges'
 import { KpiCard } from '@/components/shared/KpiCard'
-import { usePlatformUsers, useCompanies, inviteUser, type PlatformUser } from '@/lib/api'
+import {
+  usePlatformUsers,
+  useCompanies,
+  inviteUser,
+  updateUserRole,
+  resetUserPassword,
+  setUserSuspended,
+  type PlatformUser,
+} from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 
 const roleTones = { Employee: 'neutral', Manager: 'purple', Owner: 'success' } as const
@@ -22,8 +30,47 @@ export function OwnerUsers() {
   const [role, setRole] = useState('all')
   const [addOpen, setAddOpen] = useState(false)
   const { user } = useAuth()
-  const { data: users } = usePlatformUsers()
+  const { data: users, refetch } = usePlatformUsers()
   const { data: companies } = useCompanies()
+
+  // Row actions (edit role / reset password / suspend)
+  const [actionUser, setActionUser] = useState<PlatformUser | null>(null)
+  const [actionKind, setActionKind] = useState<'role' | 'reset' | 'suspend' | null>(null)
+  const [newRole, setNewRole] = useState<'employee' | 'manager' | 'owner'>('employee')
+  const [actionBusy, setActionBusy] = useState(false)
+  const [actionErr, setActionErr] = useState<string | null>(null)
+
+  const openAction = (u: PlatformUser, kind: 'role' | 'reset' | 'suspend') => {
+    setActionUser(u)
+    setActionKind(kind)
+    setNewRole(u.role)
+    setActionErr(null)
+  }
+
+  const closeAction = () => {
+    if (actionBusy) return
+    setActionUser(null)
+    setActionKind(null)
+    setActionErr(null)
+  }
+
+  const confirmAction = async () => {
+    if (!actionUser || !actionKind) return
+    setActionBusy(true)
+    setActionErr(null)
+    try {
+      if (actionKind === 'role') await updateUserRole(actionUser.id, newRole)
+      else if (actionKind === 'reset') await resetUserPassword(actionUser.id)
+      else if (actionKind === 'suspend') await setUserSuspended(actionUser.id, actionUser.isActive)
+      setActionUser(null)
+      setActionKind(null)
+      refetch()
+    } catch (e) {
+      setActionErr(e instanceof Error ? e.message : 'Action failed')
+    } finally {
+      setActionBusy(false)
+    }
+  }
 
   // Invite form
   const [inviteEmail, setInviteEmail] = useState('')
@@ -60,6 +107,7 @@ export function OwnerUsers() {
       setInviteEmail('')
       setInviteName('')
       setInvitePhone('')
+      refetch()
     } catch (e) {
       setInviteErr(e instanceof Error ? e.message : 'Could not create invite')
     } finally {
@@ -99,17 +147,26 @@ export function OwnerUsers() {
     },
     { key: 'role', header: 'Role', render: (u) => <Badge tone={roleTones[u.roleLabel]}>{u.roleLabel}</Badge> },
     { key: 'company', header: 'Company', render: (u) => u.company, hideOnMobile: true },
-    { key: 'status', header: 'Status', render: (u) => <StatusBadge status={u.status} />, hideOnMobile: true },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (u) => (u.isActive ? <StatusBadge status={u.status} /> : <Badge tone="danger">Suspended</Badge>),
+      hideOnMobile: true,
+    },
     { key: 'last', header: 'Last active', render: (u) => u.lastActive, hideOnMobile: true },
     {
       key: 'actions',
       header: '',
-      render: () => (
+      render: (u) => (
         <Dropdown trigger={<Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button>}>
-          <DropdownItem icon={<ShieldCheck className="h-4 w-4" />}>Edit role</DropdownItem>
-          <DropdownItem>Reset password</DropdownItem>
+          <DropdownItem icon={<ShieldCheck className="h-4 w-4" />} onClick={() => openAction(u, 'role')}>Edit role</DropdownItem>
+          <DropdownItem icon={<KeyRound className="h-4 w-4" />} onClick={() => openAction(u, 'reset')}>Reset password</DropdownItem>
           <DropdownDivider />
-          <DropdownItem danger>Suspend user</DropdownItem>
+          {u.isActive ? (
+            <DropdownItem danger icon={<Ban className="h-4 w-4" />} onClick={() => openAction(u, 'suspend')}>Suspend user</DropdownItem>
+          ) : (
+            <DropdownItem icon={<UserCheck className="h-4 w-4" />} onClick={() => openAction(u, 'suspend')}>Reactivate user</DropdownItem>
+          )}
         </Dropdown>
       ),
     },
@@ -168,6 +225,69 @@ export function OwnerUsers() {
             <p className="rounded-lg bg-surface-subtle px-3 py-2 text-xs text-ink-muted">Owners have platform-wide access and aren't tied to a company. They'll sign in with this email using the OTP code we send.</p>
           ) : (
             <Field label="Company"><Select value={inviteCompany} onChange={(e) => setInviteCompany(e.target.value)}>{companies.map((c) => <option key={c.id}>{c.name}</option>)}</Select></Field>
+          )}
+        </div>
+      </Modal>
+
+      <Modal
+        open={actionUser !== null}
+        onClose={closeAction}
+        title={
+          actionKind === 'role'
+            ? 'Edit role'
+            : actionKind === 'reset'
+              ? 'Reset password'
+              : actionUser?.isActive
+                ? 'Suspend user'
+                : 'Reactivate user'
+        }
+        description={actionUser ? `${actionUser.name} · ${actionUser.email}` : undefined}
+        footer={
+          <>
+            <Button variant="outline" onClick={closeAction} disabled={actionBusy}>Cancel</Button>
+            <Button
+              onClick={confirmAction}
+              disabled={actionBusy || (actionKind === 'role' && actionUser?.role === newRole)}
+              variant={actionKind === 'suspend' && actionUser?.isActive ? 'danger' : 'primary'}
+            >
+              {actionBusy
+                ? 'Working…'
+                : actionKind === 'role'
+                  ? 'Save role'
+                  : actionKind === 'reset'
+                    ? 'Send reset email'
+                    : actionUser?.isActive
+                      ? 'Suspend user'
+                      : 'Reactivate user'}
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          {actionErr && <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-600 dark:bg-rose-950/40">{actionErr}</p>}
+
+          {actionKind === 'role' && (
+            <Field label="Role">
+              <Select value={newRole} onChange={(e) => setNewRole(e.target.value as 'employee' | 'manager' | 'owner')}>
+                <option value="employee">Employee</option>
+                <option value="manager">Manager / Admin</option>
+                <option value="owner">Owner</option>
+              </Select>
+            </Field>
+          )}
+
+          {actionKind === 'reset' && (
+            <p className="text-sm text-ink-muted">
+              SentinelAI is passwordless. This will sign the user out of all sessions and email them a secure prompt to sign back in with a fresh one-time code.
+            </p>
+          )}
+
+          {actionKind === 'suspend' && (
+            <p className="text-sm text-ink-muted">
+              {actionUser?.isActive
+                ? 'The user will be signed out and blocked from signing in until reactivated. They will be notified by email.'
+                : 'The user will be able to sign in again right away. They will be notified by email.'}
+            </p>
           )}
         </div>
       </Modal>

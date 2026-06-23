@@ -370,6 +370,7 @@ export interface PlatformUser {
   company: string
   companyId: string | null
   status: 'active' | 'offline' | 'on-leave'
+  isActive: boolean
   lastActive: string
 }
 
@@ -382,7 +383,7 @@ const ROLE_LABEL: Record<string, PlatformUser['roleLabel']> = {
 async function fetchPlatformUsers(): Promise<PlatformUser[]> {
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, full_name, email, role, presence, last_active_at, company_id, companies(name)')
+    .select('id, full_name, email, role, presence, last_active_at, company_id, is_active, companies(name)')
     .order('role', { ascending: true })
   if (error) throw error
 
@@ -398,6 +399,7 @@ async function fetchPlatformUsers(): Promise<PlatformUser[]> {
       company: company?.name ?? '—',
       companyId: p.company_id ?? null,
       status: p.presence === 'online' ? 'active' : p.presence === 'on_leave' ? 'on-leave' : 'offline',
+      isActive: p.is_active !== false,
       lastActive: relativeTime(p.last_active_at),
     }
   })
@@ -1028,6 +1030,42 @@ export async function inviteUser(input: {
     throw new Error(message)
   }
   if (data && data.success === false) throw new Error(data.error ?? 'Could not send invite')
+}
+
+/** Privileged owner-only account actions routed through the `manage-user`
+ *  edge function (service-role writes to other users' profiles +
+ *  account_roles, plus a branded email to the affected user). */
+async function manageUser(body: Record<string, unknown>): Promise<void> {
+  const { data, error } = await supabase.functions.invoke('manage-user', { body })
+  if (error) {
+    let message = error.message
+    const ctx = (error as { context?: Response }).context
+    if (ctx && typeof ctx.json === 'function') {
+      try {
+        const parsed = await ctx.json()
+        if (parsed?.error) message = parsed.error
+      } catch {
+        /* ignore parse errors */
+      }
+    }
+    throw new Error(message)
+  }
+  if (data && data.success === false) throw new Error(data.error ?? 'Action failed')
+}
+
+/** Owner changes another user's platform role (and emails them). */
+export async function updateUserRole(userId: string, role: 'employee' | 'manager' | 'owner'): Promise<void> {
+  await manageUser({ action: 'update_role', userId, role })
+}
+
+/** Owner resets a user's passwordless sign-in — revokes sessions, emails them. */
+export async function resetUserPassword(userId: string): Promise<void> {
+  await manageUser({ action: 'reset_password', userId })
+}
+
+/** Owner suspends or reactivates a user account (and emails them). */
+export async function setUserSuspended(userId: string, suspended: boolean): Promise<void> {
+  await manageUser({ action: 'set_suspended', userId, suspended })
 }
 
 /** Owner creates a new company (tenant) plus its initial subscription.
