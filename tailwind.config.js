@@ -18,6 +18,17 @@ export default {
           900: '#1d2c8f',
           950: '#151b54',
         },
+        palette: {
+          navy: '#2F4156',
+          teal: '#567C8D',
+          skyblue: '#C8D9E6',
+          beige: '#F5EFEB',
+          white: '#FFFFFF',
+          vanilla: '#FFF1B9',
+          chiffon: '#FFF4C5',
+          cornsilk: '#FFFAE3',
+          floral: '#FFFDF4',
+        },
         surface: {
           DEFAULT: 'rgb(var(--surface) / <alpha-value>)',
           subtle: 'rgb(var(--surface-subtle) / <alpha-value>)',

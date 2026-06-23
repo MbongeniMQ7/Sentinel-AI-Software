@@ -100,6 +100,351 @@ export interface Faq {
   a: string
 }
 
+// ============================================================================
+// Robust Offline/Simulation Mock Datastore Fallbacks
+// ============================================================================
+
+export const IS_DEMO_MODE = !import.meta.env.VITE_SUPABASE_URL || 
+  import.meta.env.VITE_SUPABASE_URL.includes('placeholder') || 
+  import.meta.env.VITE_SUPABASE_URL.includes('mock')
+
+export function getLocal<T>(key: string, initial: T): T {
+  const existing = localStorage.getItem(key)
+  if (existing) {
+    try {
+      return JSON.parse(existing)
+    } catch {
+      return initial
+    }
+  }
+  localStorage.setItem(key, JSON.stringify(initial))
+  return initial
+}
+
+export function setLocal<T>(key: string, value: T) {
+  localStorage.setItem(key, JSON.stringify(value))
+}
+
+const defaultEmployees: Employee[] = [
+  {
+    id: 'emp-1',
+    name: 'Marcus Vance',
+    email: 'marcus.vance@northbay.sentinel.ai',
+    role: 'Forklift Operator',
+    department: 'Logistics',
+    shift: 'Morning',
+    status: 'active',
+    fatigue: 28,
+    heartRate: 72,
+    riskLevel: 'low',
+    monitoring: 'hybrid',
+    device: 'Wearable Band 3',
+    avatarStatus: 'online',
+    lastActive: 'Just now',
+    avatarUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150',
+  },
+  {
+    id: 'emp-2',
+    name: 'Sarah Finch',
+    email: 'sarah.finch@northbay.sentinel.ai',
+    role: 'Line Operator',
+    department: 'Processing Tower',
+    shift: 'Morning',
+    status: 'active',
+    fatigue: 64,
+    heartRate: 85,
+    riskLevel: 'moderate',
+    monitoring: 'camera',
+    device: 'Fixed Cam A4',
+    avatarStatus: 'busy',
+    lastActive: '2m ago',
+    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+  },
+  {
+    id: 'emp-3',
+    name: 'Daniel Chen',
+    email: 'daniel.chen@northbay.sentinel.ai',
+    role: 'Dispatch Coordinator',
+    department: 'Dispatch Center',
+    shift: 'Morning',
+    status: 'on-break',
+    fatigue: 78,
+    heartRate: 92,
+    riskLevel: 'critical',
+    monitoring: 'hybrid',
+    device: 'Hybrid Band Alpha',
+    avatarStatus: 'away',
+    lastActive: '12m ago',
+    avatarUrl: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150',
+  },
+  {
+    id: 'emp-4',
+    name: 'Lena Frost',
+    email: 'lena.frost@northbay.sentinel.ai',
+    role: 'Technician',
+    department: 'Logistics',
+    shift: 'Evening',
+    status: 'offline',
+    fatigue: 15,
+    heartRate: 0,
+    riskLevel: 'low',
+    monitoring: 'camera',
+    device: '—',
+    avatarStatus: 'offline',
+    lastActive: '5h ago',
+    avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150',
+  },
+  {
+    id: 'emp-5',
+    name: 'Omar Hadid',
+    email: 'omar.hadid@northbay.sentinel.ai',
+    role: 'QA Inspector',
+    department: 'Operations',
+    shift: 'Evening',
+    status: 'active',
+    fatigue: 42,
+    heartRate: 78,
+    riskLevel: 'low',
+    monitoring: 'wearable',
+    device: 'Vitals Band B2',
+    avatarStatus: 'online',
+    lastActive: 'Just now',
+    avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
+  }
+]
+
+const defaultAlerts: AlertItem[] = [
+  {
+    id: 'alert-1',
+    employee: 'Daniel Chen',
+    employeeId: 'emp-3',
+    type: 'fatigue',
+    severity: 'critical',
+    status: 'open',
+    message: 'Sustained fatigue index above critical alarm threshold',
+    timestamp: '15m ago',
+    location: 'Dispatch Room A',
+  },
+  {
+    id: 'alert-2',
+    employee: 'Sarah Finch',
+    employeeId: 'emp-2',
+    type: 'drowsiness',
+    severity: 'high',
+    status: 'open',
+    message: 'Micro-sleep / eye-closure triggers registered',
+    timestamp: '32m ago',
+    location: 'Processing Tower B',
+  },
+  {
+    id: 'alert-3',
+    employee: 'Marcus Vance',
+    employeeId: 'emp-1',
+    type: 'distraction',
+    severity: 'moderate',
+    status: 'resolved',
+    message: 'Prolonged safety zone focus deviation',
+    timestamp: '2h ago',
+    location: 'Warehouse Loading Zone 3',
+  }
+]
+
+const defaultDevices: DeviceItem[] = [
+  {
+    id: 'dev-1',
+    name: 'Thermal Camera Hub A',
+    type: 'Camera',
+    status: 'online',
+    battery: 100,
+    firmware: 'v3.1.2',
+    assignedTo: 'Sarah Finch',
+    location: 'Tower Loader B',
+    lastSeen: '1m ago',
+  },
+  {
+    id: 'dev-2',
+    name: 'Biometric Wristband 12',
+    type: 'Wearable Band',
+    status: 'online',
+    battery: 84,
+    firmware: 'v2.8.9',
+    assignedTo: 'Marcus Vance',
+    location: 'Warehouse Hub',
+    lastSeen: '2m ago',
+  },
+  {
+    id: 'dev-3',
+    name: 'Operations Edge Gateway',
+    type: 'Edge Gateway',
+    status: 'online',
+    battery: 100,
+    firmware: 'v4.0.1',
+    assignedTo: null,
+    location: 'Office Roster Desk',
+    lastSeen: 'Just now',
+  },
+  {
+    id: 'dev-4',
+    name: 'SmartHelmet-V3 Sensor',
+    type: 'Helmet Sensor',
+    status: 'offline',
+    battery: 0,
+    firmware: 'v1.4.3',
+    assignedTo: 'Lena Frost',
+    location: 'Logistics Dock',
+    lastSeen: '1d ago',
+  }
+]
+
+const defaultLeaveRequests: LeaveRequest[] = [
+  {
+    id: 'leave-1',
+    employee: 'Lena Frost',
+    type: 'Annual',
+    from: 'Jul 10, 2026',
+    to: 'Jul 15, 2026',
+    days: 5,
+    reason: 'Family summer roadtrip rest cycle.',
+    status: 'pending',
+  },
+  {
+    id: 'leave-2',
+    employee: 'Marcus Vance',
+    type: 'Sick',
+    from: 'Jun 22, 2026',
+    to: 'Jun 23, 2026',
+    days: 1,
+    reason: 'Doctor checkup dental.',
+    status: 'approved',
+  }
+]
+
+const defaultBreakRequests: BreakRequest[] = [
+  {
+    id: 'break-1',
+    employee: 'Daniel Chen',
+    reason: 'Elevated mental weariness threshold alarm.',
+    requestedAt: '3m ago',
+    duration: 15,
+    status: 'pending',
+  },
+  {
+    id: 'break-2',
+    employee: 'Marcus Vance',
+    reason: 'Hydration and active rest cycle.',
+    requestedAt: '2h ago',
+    duration: 10,
+    status: 'approved',
+  }
+]
+
+const defaultCompanies: Company[] = [
+  {
+    id: 'comp-1',
+    name: 'NorthBay Logistics',
+    plan: 'Enterprise',
+    seats: 120,
+    activeUsers: 42,
+    devices: 24,
+    mrr: 1080,
+    status: 'active',
+    industry: 'Logistics Depot',
+    since: '2023',
+  },
+  {
+    id: 'comp-2',
+    name: 'Vertex Manufacturing',
+    plan: 'Growth',
+    seats: 80,
+    activeUsers: 32,
+    devices: 15,
+    mrr: 720,
+    status: 'active',
+    industry: 'Automotive Parts',
+    since: '2024',
+  },
+  {
+    id: 'comp-3',
+    name: 'Apex Freight',
+    plan: 'Starter',
+    seats: 30,
+    activeUsers: 12,
+    devices: 8,
+    mrr: 360,
+    status: 'trial',
+    industry: 'Freight Ports',
+    since: '2026',
+  }
+]
+
+const defaultAuditLogs: AuditLog[] = [
+  {
+    id: 'audit-1',
+    actor: 'Marcus Cole',
+    action: 'Approved Roster Break Request',
+    target: 'Daniel Chen',
+    ip: '192.168.1.144',
+    timestamp: '5m ago',
+  },
+  {
+    id: 'audit-2',
+    actor: 'Priya Nair',
+    action: 'Updated Device Assignment',
+    target: 'Thermal Cam Loader',
+    ip: '192.168.1.102',
+    timestamp: '1h ago',
+  }
+]
+
+const defaultFaqs: Faq[] = [
+  {
+    q: 'How does SentinelAI detect fatigue?',
+    a: 'SentinelAI fuses computer-vision signals (eye-closure, head pose, micro-expressions) with optional wearable biometrics (heart-rate variability) to compute a real-time fatigue index, processed on-edge for privacy.'
+  },
+  {
+    q: 'Is my camera always recording?',
+    a: 'No. The camera processes frames on-device in real time and only stores anonymized metrics. Raw video is never uploaded unless you explicitly enable incident clips.'
+  },
+  {
+    q: 'How do I request a break?',
+    a: 'Open Break Management, tap Request Break, choose a reason and duration. Your manager is notified instantly and you will see the status update live.'
+  }
+]
+
+const defaultFatigueTrend: TrendPoint[] = [
+  { time: '08:00', fatigue: 25, heartRate: 70, focus: 95 },
+  { time: '10:00', fatigue: 30, heartRate: 72, focus: 90 },
+  { time: '12:00', fatigue: 45, heartRate: 74, focus: 82 },
+  { time: '14:00', fatigue: 52, heartRate: 80, focus: 75 },
+  { time: '16:00', fatigue: 35, heartRate: 71, focus: 88 }
+]
+
+const defaultWeeklyAlerts: WeeklyAlertPoint[] = [
+  { day: 'Mon', fatigue: 3, drowsiness: 1, distraction: 2 },
+  { day: 'Tue', fatigue: 1, drowsiness: 2, distraction: 0 },
+  { day: 'Wed', fatigue: 5, drowsiness: 0, distraction: 4 },
+  { day: 'Thu', fatigue: 2, drowsiness: 1, distraction: 1 },
+  { day: 'Fri', fatigue: 6, drowsiness: 3, distraction: 3 },
+  { day: 'Sat', fatigue: 1, drowsiness: 0, distraction: 0 },
+  { day: 'Sun', fatigue: 0, drowsiness: 0, distraction: 0 }
+]
+
+const defaultDepartmentFatigue: DepartmentFatiguePoint[] = [
+  { department: 'Logistics', avgFatigue: 32, employees: 14 },
+  { department: 'Processing Tower', avgFatigue: 58, employees: 8 },
+  { department: 'Dispatch Center', avgFatigue: 68, employees: 4 },
+  { department: 'Operations QA', avgFatigue: 41, employees: 12 }
+]
+
+const defaultRevenueTrend: RevenuePoint[] = [
+  { month: 'Jan', mrr: 1800, arr: 21600 },
+  { month: 'Feb', mrr: 2100, arr: 25200 },
+  { month: 'Mar', mrr: 2200, arr: 26400 },
+  { month: 'Apr', mrr: 2450, arr: 29400 },
+  { month: 'May', mrr: 2700, arr: 32400 },
+  { month: 'Jun', mrr: 2980, arr: 35760 }
+]
+
 export interface TrendPoint {
   time: string
   fatigue: number
@@ -181,6 +526,10 @@ function useQuery<T>(fetcher: () => Promise<T>, fallback: T, deps: unknown[] = [
 // ============================================================================
 
 async function fetchEmployees(): Promise<Employee[]> {
+  if (IS_DEMO_MODE) {
+    return getLocal<Employee[]>('sentinel_mock_employees', defaultEmployees)
+  }
+
   const { data, error } = await supabase
     .from('employee_profiles')
     .select(`
@@ -218,6 +567,10 @@ export function useEmployees() {
 }
 
 async function fetchAlerts(): Promise<AlertItem[]> {
+  if (IS_DEMO_MODE) {
+    return getLocal<AlertItem[]>('sentinel_mock_alerts', defaultAlerts)
+  }
+
   const { data, error } = await supabase
     .from('alerts')
     .select(`
@@ -245,6 +598,10 @@ export function useAlerts() {
 }
 
 async function fetchDevices(): Promise<DeviceItem[]> {
+  if (IS_DEMO_MODE) {
+    return getLocal<DeviceItem[]>('sentinel_mock_devices', defaultDevices)
+  }
+
   const { data, error } = await supabase
     .from('devices')
     .select(`
@@ -271,6 +628,10 @@ export function useDevices() {
 }
 
 async function fetchLeaveRequests(): Promise<LeaveRequest[]> {
+  if (IS_DEMO_MODE) {
+    return getLocal<LeaveRequest[]>('sentinel_mock_leave_requests', defaultLeaveRequests)
+  }
+
   const { data, error } = await supabase
     .from('leave_requests')
     .select(`
@@ -297,6 +658,10 @@ export function useLeaveRequests() {
 }
 
 async function fetchBreakRequests(): Promise<BreakRequest[]> {
+  if (IS_DEMO_MODE) {
+    return getLocal<BreakRequest[]>('sentinel_mock_break_requests', defaultBreakRequests)
+  }
+
   const { data, error } = await supabase
     .from('break_requests')
     .select(`
@@ -321,6 +686,10 @@ export function useBreakRequests() {
 }
 
 async function fetchCompanies(): Promise<Company[]> {
+  if (IS_DEMO_MODE) {
+    return getLocal<Company[]>('sentinel_mock_companies', defaultCompanies)
+  }
+
   const [{ data: companies, error }, { data: profileRows }, { data: deviceRows }] = await Promise.all([
     supabase.from('companies').select(`
       id, name, industry, status, seats, since,
@@ -358,6 +727,10 @@ export function useCompanies() {
 }
 
 async function fetchAuditLogs(): Promise<AuditLog[]> {
+  if (IS_DEMO_MODE) {
+    return getLocal<AuditLog[]>('sentinel_mock_audit_logs', defaultAuditLogs)
+  }
+
   const { data, error } = await supabase
     .from('audit_logs')
     .select(`
@@ -383,6 +756,10 @@ export function useAuditLogs() {
 }
 
 async function fetchFaqs(): Promise<Faq[]> {
+  if (IS_DEMO_MODE) {
+    return getLocal<Faq[]>('sentinel_mock_faqs', defaultFaqs)
+  }
+
   const { data, error } = await supabase
     .from('faqs')
     .select('question, answer')
@@ -397,6 +774,10 @@ export function useFaqs() {
 }
 
 async function fetchFatigueTrend(employeeId?: string): Promise<TrendPoint[]> {
+  if (IS_DEMO_MODE) {
+    return defaultFatigueTrend
+  }
+
   let query = supabase
     .from('fatigue_readings')
     .select('recorded_at, fatigue_score, heart_rate, focus_score')
@@ -441,6 +822,10 @@ export interface WeeklyAlertPoint {
 }
 
 async function fetchWeeklyAlerts(): Promise<WeeklyAlertPoint[]> {
+  if (IS_DEMO_MODE) {
+    return defaultWeeklyAlerts
+  }
+
   const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
   const { data, error } = await supabase
     .from('alerts')
@@ -475,6 +860,10 @@ export interface DepartmentFatiguePoint {
 }
 
 async function fetchDepartmentFatigue(): Promise<DepartmentFatiguePoint[]> {
+  if (IS_DEMO_MODE) {
+    return defaultDepartmentFatigue
+  }
+
   const { data, error } = await supabase
     .from('employee_profiles')
     .select('fatigue_score, departments(name)')
