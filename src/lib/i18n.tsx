@@ -1,20 +1,36 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 
-export type Lang = 'en' | 'es' | 'fr' | 'de' | 'pt' | 'zh' | 'ar' | 'hi' | 'ru' | 'ja' | 'af' | 'zu'
+export type Lang =
+  | 'en' | 'es' | 'fr' | 'de' | 'pt' | 'zh' | 'ar' | 'hi' | 'ru' | 'ja'
+  | 'af' | 'zu' | 'xh' | 'nso' | 'st' | 'tn' | 'ss' | 'nr' | 'ts' | 've'
+  | 'it' | 'nl' | 'ko' | 'sw'
 
 export const languages: { code: Lang; label: string; native: string }[] = [
   { code: 'en', label: 'English', native: 'English' },
   { code: 'es', label: 'Spanish', native: 'Español' },
   { code: 'fr', label: 'French', native: 'Français' },
   { code: 'de', label: 'German', native: 'Deutsch' },
+  { code: 'it', label: 'Italian', native: 'Italiano' },
+  { code: 'nl', label: 'Dutch', native: 'Nederlands' },
   { code: 'pt', label: 'Portuguese', native: 'Português' },
+  { code: 'ru', label: 'Russian', native: 'Русский' },
   { code: 'zh', label: 'Chinese', native: '中文' },
+  { code: 'ja', label: 'Japanese', native: '日本語' },
+  { code: 'ko', label: 'Korean', native: '한국어' },
   { code: 'ar', label: 'Arabic', native: 'العربية' },
   { code: 'hi', label: 'Hindi', native: 'हिन्दी' },
-  { code: 'ru', label: 'Russian', native: 'Русский' },
-  { code: 'ja', label: 'Japanese', native: '日本語' },
+  // South African official languages
   { code: 'af', label: 'Afrikaans', native: 'Afrikaans' },
   { code: 'zu', label: 'Zulu', native: 'isiZulu' },
+  { code: 'xh', label: 'Xhosa', native: 'isiXhosa' },
+  { code: 'nso', label: 'Northern Sotho', native: 'Sepedi' },
+  { code: 'st', label: 'Sesotho', native: 'Sesotho' },
+  { code: 'tn', label: 'Tswana', native: 'Setswana' },
+  { code: 'ss', label: 'Swati', native: 'siSwati' },
+  { code: 'nr', label: 'Ndebele', native: 'isiNdebele' },
+  { code: 'ts', label: 'Tsonga', native: 'Xitsonga' },
+  { code: 've', label: 'Venda', native: 'Tshivenḓa' },
+  { code: 'sw', label: 'Swahili', native: 'Kiswahili' },
 ]
 
 const RTL_LANGS: Lang[] = ['ar']
@@ -921,7 +937,239 @@ const ja: Dict = {
   'footer.terms': '利用規約',
 }
 
-const dictionaries: Record<Lang, Dict> = { en, es, fr, de, pt, zh, ar, hi, ru, ja, af, zu }
+// ---------------------------------------------------------------------------
+// Additional languages. These provide native translations for the most visible
+// UI strings; any key not present here falls back to English automatically.
+// ---------------------------------------------------------------------------
+
+const xh: Dict = {
+  'nav.pricing': 'Amaxabiso',
+  'nav.features': 'Iimpawu',
+  'nav.how': 'Indlela esebenza ngayo',
+  'nav.platform': 'Iqonga',
+  'cta.signIn': 'Ngena',
+  'cta.bookDemo': 'Bhukisha idemo',
+  'cta.tryDemo': 'Zama idemo ebukhoma',
+  'cta.explore': 'Hlola iqonga',
+  'cta.startDemo': 'Qalisa idemo',
+  'cta.getStarted': 'Qalisa',
+  'hero.title1': 'Gcina abantu bakho',
+  'hero.titleHi': 'bephaphile, bekhuselekile',
+  'hero.title2': 'kwaye besesimeni esihle',
+  'footer.rights': '© 2026 SentinelAI. Onke amalungelo agciniwe.',
+  'footer.privacy': 'Ubumfihlo',
+  'footer.security': 'Ukhuseleko',
+  'footer.terms': 'Imigaqo nemiqathango',
+}
+
+const nso: Dict = {
+  'nav.pricing': 'Ditheko',
+  'nav.features': 'Dikarolo',
+  'nav.how': 'Ka moo e šomago ka gona',
+  'nav.platform': 'Sephlatfomo',
+  'cta.signIn': 'Tsena',
+  'cta.bookDemo': 'Boka pontšho',
+  'cta.tryDemo': 'Leka pontšho ya nako ya nnete',
+  'cta.explore': 'Hlahloba sephlatfomo',
+  'cta.startDemo': 'Thoma pontšho',
+  'cta.getStarted': 'Thoma',
+  'hero.title1': 'Boloka batho ba gago',
+  'hero.titleHi': 'ba phafogile, ba šireletšegile',
+  'hero.title2': 'gomme ba le maemong a makaone',
+  'footer.rights': '© 2026 SentinelAI. Ditshwanelo ka moka di bolokilwe.',
+  'footer.privacy': 'Sephiri',
+  'footer.security': 'Tšhireletšo',
+  'footer.terms': 'Dipeelano',
+}
+
+const st: Dict = {
+  'nav.pricing': 'Litheko',
+  'nav.features': 'Likarolo',
+  'nav.how': 'Kamoo e sebetsang kateng',
+  'nav.platform': 'Sethala',
+  'cta.signIn': 'Kena',
+  'cta.bookDemo': 'Boka pontsho',
+  'cta.tryDemo': 'Leka pontsho ea sebele',
+  'cta.explore': 'Hlahloba sethala',
+  'cta.startDemo': 'Qala pontsho',
+  'cta.getStarted': 'Qala',
+  'hero.title1': 'Boloka batho ba hao',
+  'hero.titleHi': 'ba falimehile, ba sireletsehile',
+  'hero.title2': 'mme ba le boemong bo botle',
+  'footer.rights': '© 2026 SentinelAI. Litokelo tsohle li sireletsoe.',
+  'footer.privacy': 'Lekunutu',
+  'footer.security': 'Tšhireletso',
+  'footer.terms': 'Lipehelo',
+}
+
+const tn: Dict = {
+  'nav.pricing': 'Ditlhwatlhwa',
+  'nav.features': 'Dikarolo',
+  'nav.how': 'Ka fa e dirang ka teng',
+  'nav.platform': 'Sethala',
+  'cta.signIn': 'Tsena',
+  'cta.bookDemo': 'Bea pontsho',
+  'cta.tryDemo': 'Leka pontsho e e tshelang',
+  'cta.explore': 'Sekaseka sethala',
+  'cta.startDemo': 'Simolola pontsho',
+  'cta.getStarted': 'Simolola',
+  'hero.title1': 'Boloka batho ba gago',
+  'hero.titleHi': 'ba thantse, ba sireletsegile',
+  'hero.title2': 'mme ba le mo seemong se se molemo',
+  'footer.rights': '© 2026 SentinelAI. Ditshwanelo tsotlhe di sireletsegile.',
+  'footer.privacy': 'Sephiri',
+  'footer.security': 'Tshireletso',
+  'footer.terms': 'Dipeelano',
+}
+
+const ss: Dict = {
+  'nav.pricing': 'Emanani',
+  'nav.features': 'Tici',
+  'nav.how': 'Indlela lesebenta ngayo',
+  'nav.platform': 'Inkhundla',
+  'cta.signIn': 'Ngena',
+  'cta.bookDemo': 'Bhukha idemo',
+  'cta.tryDemo': 'Zama idemo lebukhoma',
+  'cta.explore': 'Hlola inkhundla',
+  'cta.startDemo': 'Cala idemo',
+  'cta.getStarted': 'Cala',
+  'hero.title1': 'Gcina bantfu bakho',
+  'hero.titleHi': 'baphapheme, baphephile',
+  'hero.title2': 'futsi basesimweni lesihle',
+  'footer.rights': '© 2026 SentinelAI. Onkhe emalungelo agcinakele.',
+  'footer.privacy': 'Imfihlo',
+  'footer.security': 'Kuphepha',
+  'footer.terms': 'Imibandzela',
+}
+
+const nr: Dict = {
+  'nav.pricing': 'Amanani',
+  'nav.how': 'Indlela esebenza ngayo',
+  'nav.platform': 'Ipulatifomu',
+  'cta.signIn': 'Ngena',
+  'cta.explore': 'Hlola ipulatifomu',
+  'cta.startDemo': 'Thoma idemo',
+  'cta.getStarted': 'Thoma',
+  'hero.title1': 'Gcina abantu bakho',
+  'hero.titleHi': 'baphapheme, bavikelekile',
+  'hero.title2': 'begodu basesimweni esihle',
+  'footer.rights': '© 2026 SentinelAI. Woke amalungelo agodliwe.',
+  'footer.privacy': 'Ubufihlo',
+  'footer.security': 'Ezokuvikela',
+  'footer.terms': 'Imigomo',
+}
+
+const ts: Dict = {
+  'nav.pricing': 'Mintsengo',
+  'nav.how': 'Ndlela leyi yi tirhaka ha yona',
+  'nav.platform': 'Pulatifomo',
+  'cta.signIn': 'Nghena',
+  'cta.explore': 'Kambela pulatifomo',
+  'cta.startDemo': 'Sungula demo',
+  'cta.getStarted': 'Sungula',
+  'hero.title1': 'Hlayisa vanhu va wena',
+  'footer.rights': '© 2026 SentinelAI. Timfanelo hinkwato ti hlayisiwile.',
+  'footer.security': 'Nsirhelelo',
+  'footer.terms': 'Swipimelo',
+}
+
+const ve: Dict = {
+  'nav.pricing': 'Mitengo',
+  'nav.how': 'Nḓila ine ya shuma ngayo',
+  'cta.signIn': 'Dzhena',
+  'cta.startDemo': 'Thoma demo',
+  'cta.getStarted': 'Thoma',
+  'hero.title1': 'Vhulungani vhathu vhaṋu',
+  'footer.rights': '© 2026 SentinelAI. Pfanelo dzoṱhe dzo vhulungwa.',
+  'footer.privacy': 'Tshidzumbe',
+  'footer.security': 'Tsireledzo',
+}
+
+const it: Dict = {
+  'nav.pricing': 'Prezzi',
+  'nav.features': 'Funzionalità',
+  'nav.how': 'Come funziona',
+  'nav.platform': 'Piattaforma',
+  'cta.signIn': 'Accedi',
+  'cta.bookDemo': 'Prenota una demo',
+  'cta.tryDemo': 'Prova la demo dal vivo',
+  'cta.explore': 'Esplora la piattaforma',
+  'cta.startDemo': 'Avvia la demo',
+  'cta.getStarted': 'Inizia',
+  'hero.title1': 'Mantieni le tue persone',
+  'hero.titleHi': 'attente, al sicuro',
+  'hero.title2': 'e al massimo',
+  'footer.rights': '© 2026 SentinelAI. Tutti i diritti riservati.',
+  'footer.privacy': 'Privacy',
+  'footer.security': 'Sicurezza',
+  'footer.terms': 'Termini',
+}
+
+const nl: Dict = {
+  'nav.pricing': 'Prijzen',
+  'nav.features': 'Functies',
+  'nav.how': 'Hoe het werkt',
+  'nav.platform': 'Platform',
+  'cta.signIn': 'Inloggen',
+  'cta.bookDemo': 'Boek een demo',
+  'cta.tryDemo': 'Probeer de live demo',
+  'cta.explore': 'Verken het platform',
+  'cta.startDemo': 'Start de demo',
+  'cta.getStarted': 'Aan de slag',
+  'hero.title1': 'Houd je mensen',
+  'hero.titleHi': 'alert, veilig',
+  'hero.title2': 'en op hun best',
+  'footer.rights': '© 2026 SentinelAI. Alle rechten voorbehouden.',
+  'footer.privacy': 'Privacy',
+  'footer.security': 'Beveiliging',
+  'footer.terms': 'Voorwaarden',
+}
+
+const ko: Dict = {
+  'nav.pricing': '요금제',
+  'nav.features': '기능',
+  'nav.how': '작동 방식',
+  'nav.platform': '플랫폼',
+  'cta.signIn': '로그인',
+  'cta.bookDemo': '데모 예약',
+  'cta.tryDemo': '라이브 데모 체험',
+  'cta.explore': '플랫폼 둘러보기',
+  'cta.startDemo': '데모 시작',
+  'cta.getStarted': '시작하기',
+  'hero.title1': '직원을',
+  'hero.titleHi': '깨어 있고 안전하게',
+  'hero.title2': '최상의 상태로 유지하세요',
+  'footer.rights': '© 2026 SentinelAI. 모든 권리 보유.',
+  'footer.privacy': '개인정보',
+  'footer.security': '보안',
+  'footer.terms': '약관',
+}
+
+const sw: Dict = {
+  'nav.pricing': 'Bei',
+  'nav.features': 'Vipengele',
+  'nav.how': 'Jinsi inavyofanya kazi',
+  'nav.platform': 'Jukwaa',
+  'cta.signIn': 'Ingia',
+  'cta.bookDemo': 'Weka miadi ya onyesho',
+  'cta.tryDemo': 'Jaribu onyesho la moja kwa moja',
+  'cta.explore': 'Chunguza jukwaa',
+  'cta.startDemo': 'Anza onyesho',
+  'cta.getStarted': 'Anza',
+  'hero.title1': 'Walinde watu wako',
+  'hero.titleHi': 'wakiwa macho, salama',
+  'hero.title2': 'na katika hali bora',
+  'footer.rights': '© 2026 SentinelAI. Haki zote zimehifadhiwa.',
+  'footer.privacy': 'Faragha',
+  'footer.security': 'Usalama',
+  'footer.terms': 'Masharti',
+}
+
+const dictionaries: Record<Lang, Dict> = {
+  en, es, fr, de, pt, zh, ar, hi, ru, ja,
+  af, zu, xh, nso, st, tn, ss, nr, ts, ve,
+  it, nl, ko, sw,
+}
 
 interface I18nContextValue {
   lang: Lang
