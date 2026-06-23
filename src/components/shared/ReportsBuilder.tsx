@@ -77,37 +77,52 @@ export function ReportsBuilder({ templates, previewTitle, previewSubtitle, kpis,
 
   const baseFilename = `${slugify(reportTitle)}-${new Date().toISOString().slice(0, 10)}`
 
-  // Branded documents (PDF / Excel / CSV) are produced by the Python
-  // serverless function at /api/reports using the logo and brand theme.
+  const csvCell = (value: string): string => {
+    const s = String(value ?? '')
+    return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+  }
+
+  const buildCsv = (): string => {
+    const rows: string[][] = []
+    rows.push(['SentinelAI report'])
+    meta.forEach(([k, v]) => rows.push([k, v]))
+    rows.push([])
+    rows.push(['Metric', 'Value'])
+    kpis.forEach((k) => rows.push([k.label, k.value]))
+    return rows.map((r) => r.map(csvCell).join(',')).join('\r\n')
+  }
+
+  // An HTML-table workbook that Excel/Sheets open natively as .xls.
+  const buildXls = (): string => {
+    const metaRows = meta
+      .map(([k, v]) => `<tr><th align="left">${escapeHtml(k)}</th><td>${escapeHtml(v)}</td></tr>`)
+      .join('')
+    const kpiRows = kpis
+      .map((k) => `<tr><td>${escapeHtml(k.label)}</td><td>${escapeHtml(k.value)}</td></tr>`)
+      .join('')
+    return `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8" /></head><body>
+      <table border="0">${metaRows}</table>
+      <br />
+      <table border="1"><tr><th>Metric</th><th>Value</th></tr>${kpiRows}</table>
+    </body></html>`
+  }
+
+  // Reports are generated entirely client-side so export works for every role
+  // (employee, manager/admin and owner) without depending on a backend service.
   const exportReport = async (fmt: Format = format) => {
-    setGenerating(true)
     setError(null)
     try {
-      const res = await fetch('/api/reports', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: reportTitle,
-          subtitle: previewSubtitle,
-          range: rangeLabel,
-          format: fmt,
-          generatedAt,
-          meta,
-          kpis,
-        }),
-      })
-      if (!res.ok) throw new Error(`Report service error (${res.status})`)
-      const blob = await res.blob()
-      const disposition = res.headers.get('Content-Disposition') ?? ''
-      const match = /filename="?([^"]+)"?/.exec(disposition)
-      const ext = fmt === 'xlsx' ? 'xlsx' : fmt
-      const filename = match?.[1] ?? `${baseFilename}.${ext}`
-      downloadBlob(blob, blob.type || 'application/octet-stream', filename)
+      if (fmt === 'pdf') {
+        // Render a branded, printable document the user can save as PDF.
+        printReport()
+      } else if (fmt === 'csv') {
+        downloadBlob('\uFEFF' + buildCsv(), 'text/csv;charset=utf-8', `${baseFilename}.csv`)
+      } else {
+        downloadBlob(buildXls(), 'application/vnd.ms-excel', `${baseFilename}.xls`)
+      }
       setReady(true)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not generate the report')
-    } finally {
-      setGenerating(false)
     }
   }
 
@@ -180,8 +195,13 @@ export function ReportsBuilder({ templates, previewTitle, previewSubtitle, kpis,
     }
   }
 
-  const generate = () => {
-    void exportReport()
+  const generate = async () => {
+    setGenerating(true)
+    try {
+      await exportReport()
+    } finally {
+      setGenerating(false)
+    }
   }
 
   return (
