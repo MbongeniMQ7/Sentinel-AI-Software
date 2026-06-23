@@ -48,6 +48,13 @@ export interface BrandedEmailOptions {
   cta?: { label: string; url: string } | null
   /** Optional closing note (smaller, muted). */
   footnote?: string
+  /** Banner slug (file in /public/banners/<slug>.png) for this email's theme. */
+  banner?: string
+}
+
+/** Resolve the banner image URL for an email (themed slug or default). */
+export function bannerUrl(slug?: string): string {
+  return slug ? `${APP_URL}/banners/${slug}.png` : BANNER_URL
 }
 
 function esc(s: string): string {
@@ -123,7 +130,7 @@ export function renderBrandedEmail(opts: BrandedEmailOptions): string {
           <tr>
             <td style="padding:0;line-height:0;">
               <a href="${APP_URL}" target="_blank" style="text-decoration:none;">
-                <img src="${BANNER_URL}" alt="${esc(APP_NAME)} — AI Workforce Wellness, In Real Time" width="600" style="display:block;width:100%;max-width:600px;height:auto;border:0;outline:none;text-decoration:none;" />
+                <img src="${bannerUrl(opts.banner)}" alt="${esc(APP_NAME)} — ${esc(opts.heading)}" width="600" style="display:block;width:100%;max-width:600px;height:auto;border:0;outline:none;text-decoration:none;" />
               </a>
             </td>
           </tr>

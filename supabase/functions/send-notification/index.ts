@@ -110,6 +110,7 @@ async function buildNotification(
         opts: {
           preheader: `${employee.full_name ?? 'A team member'} requested ${leave}.`,
           heading: 'New leave request',
+          banner: 'intelligence-leaders',
           intro: `<strong style="color:#0f172a;">${employee.full_name ?? 'A team member'}</strong> has submitted a leave request that needs your review.`,
           infoRows: [
             { label: 'Employee', value: employee.full_name ?? employee.email ?? '—' },
@@ -135,6 +136,7 @@ async function buildNotification(
         opts: {
           preheader: `Your ${leave} request was ${approved ? 'approved' : 'declined'}.`,
           heading: approved ? 'Leave approved' : 'Leave request declined',
+          banner: 'wellness-index',
           intro: `Hi ${employee.full_name ?? 'there'}, your leave request has been reviewed by your manager.`,
           highlight: approved ? '✓ Approved' : 'Declined',
           infoRows: [
@@ -160,6 +162,7 @@ async function buildNotification(
         opts: {
           preheader: `${employee.full_name ?? 'A team member'} requested a break.`,
           heading: 'New break request',
+          banner: 'transforming-wellness',
           intro: `<strong style="color:#0f172a;">${employee.full_name ?? 'A team member'}</strong> has requested a break and is awaiting your approval.`,
           infoRows: [
             { label: 'Employee', value: employee.full_name ?? employee.email ?? '—' },
@@ -181,6 +184,7 @@ async function buildNotification(
         opts: {
           preheader: `Your break request was ${approved ? 'approved' : 'declined'}.`,
           heading: approved ? 'Break approved' : 'Break request declined',
+          banner: 'engagement',
           intro: `Hi ${employee.full_name ?? 'there'}, your break request has been reviewed.`,
           highlight: approved ? '✓ Approved' : 'Declined',
           infoRows: [
@@ -205,6 +209,7 @@ async function buildNotification(
         opts: {
           preheader: `${opener?.full_name ?? 'A team member'} reported: ${str('subject')}`,
           heading: 'New support ticket',
+          banner: 'in-action',
           intro: `<strong style="color:#0f172a;">${opener?.full_name ?? 'A team member'}</strong> has reported an issue that needs attention.`,
           infoRows: [
             ...(str('number') ? [{ label: 'Ticket', value: str('number') }] : []),
@@ -225,6 +230,7 @@ async function buildNotification(
         opts: {
           preheader: `A ticket was escalated to SentinelAI: ${str('subject')}`,
           heading: 'Ticket escalated to SentinelAI',
+          banner: 'future-management',
           intro: `A support ticket has been escalated and requires platform-level attention.`,
           infoRows: [
             ...(str('number') ? [{ label: 'Ticket', value: str('number') }] : []),
@@ -245,6 +251,7 @@ async function buildNotification(
         opts: {
           preheader: `Good news — your ticket "${str('subject')}" was resolved.`,
           heading: 'Your ticket was resolved',
+          banner: 'new-features',
           intro: `Hi ${opener.full_name ?? 'there'}, the issue you reported has been marked resolved. If anything still isn't right, just reply and we'll reopen it.`,
           highlight: '✓ Resolved',
           infoRows: [
@@ -267,6 +274,7 @@ async function buildNotification(
         opts: {
           preheader: `Your wellness alert was marked ${status}.`,
           heading: 'Wellness alert update',
+          banner: 'risk-detection',
           intro: `Hi ${employee.full_name ?? 'there'}, there's an update on a wellness alert linked to your account.`,
           highlight: titleCase(status || 'Updated'),
           infoRows: [
@@ -288,6 +296,7 @@ async function buildNotification(
         opts: {
           preheader: `${str('companyName')} was added to SentinelAI.`,
           heading: 'New company onboarded',
+          banner: 'intelligence-platform',
           intro: `A new company has been added to the platform.`,
           infoRows: [
             { label: 'Company', value: str('companyName') },
@@ -311,6 +320,7 @@ async function buildNotification(
         opts: {
           preheader: `The subscription for ${company || 'your company'} was updated.`,
           heading: 'Billing updated',
+          banner: 'insights',
           intro: `The subscription details for <strong style="color:#0f172a;">${company || 'your company'}</strong> have been updated.`,
           infoRows: [
             ...(str('plan') ? [{ label: 'Plan', value: str('plan') }] : []),
@@ -332,6 +342,7 @@ async function buildNotification(
         opts: {
           preheader: `${str('deviceName')} was assigned to you.`,
           heading: 'A device was assigned to you',
+          banner: 'future-wellness',
           intro: `Hi ${employee.full_name ?? 'there'}, a monitoring device has been assigned to your account.`,
           infoRows: [
             { label: 'Device', value: str('deviceName') },
