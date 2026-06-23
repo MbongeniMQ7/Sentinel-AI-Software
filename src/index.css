@@ -4,12 +4,12 @@
 
 :root {
   --surface: 255 255 255;
-  --surface-subtle: 248 250 252;
-  --surface-muted: 241 245 249;
-  --ink: 15 23 42;
-  --ink-muted: 71 85 105;
-  --ink-subtle: 148 163 184;
-  --line: 226 232 240;
+  --surface-subtle: 245 239 235;
+  --surface-muted: 232 238 242;
+  --ink: 34 47 59;
+  --ink-muted: 71 92 110;
+  --ink-subtle: 138 156 170;
+  --line: 222 229 234;
 }
 
 .dark {

@@ -134,7 +134,7 @@ export function ReportsBuilder({ templates, previewTitle, previewSubtitle, kpis,
         .kpi{border:1px solid #e2e8f0;border-radius:12px;padding:16px 20px;min-width:140px;}
         .kpi-value{font-size:22px;font-weight:700;}
         .kpi-label{font-size:12px;color:#64748b;margin-top:2px;}
-        .brand{display:flex;align-items:center;gap:8px;margin-bottom:24px;font-weight:700;color:#1f43f5;}
+        .brand{display:flex;align-items:center;gap:8px;margin-bottom:24px;font-weight:700;color:#2f4156;}
         @media print{body{padding:24px;}}
       </style></head><body>
       <div class="brand">SentinelAI</div>

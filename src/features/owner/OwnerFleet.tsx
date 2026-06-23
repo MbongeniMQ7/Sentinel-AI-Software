@@ -10,7 +10,7 @@ import { EmptyState } from '@/components/shared/States'
 import { useCompanies, useDevices, type DeviceItem } from '@/lib/api'
 
 const typeColors: Record<DeviceItem['type'], string> = {
-  Camera: '#3563ff',
+  Camera: '#567c8d',
   'Wearable Band': '#10b981',
   'Edge Gateway': '#8b5cf6',
   'Helmet Sensor': '#f59e0b',
@@ -92,7 +92,7 @@ export function OwnerFleet() {
             {byRegion.length === 0 ? (
               <EmptyState icon={<MapPin className="h-6 w-6" />} title="No deployment data" description="Device locations will appear here." />
             ) : (
-              <BarSeries data={byRegion} xKey="region" series={[{ key: 'devices', label: 'Devices', color: '#3563ff' }]} height={280} />
+              <BarSeries data={byRegion} xKey="region" series={[{ key: 'devices', label: 'Devices', color: '#567c8d' }]} height={280} />
             )}
           </CardBody>
         </Card>

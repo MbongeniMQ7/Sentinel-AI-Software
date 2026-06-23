@@ -143,7 +143,7 @@ export function EmployeeReports() {
   table{width:100%;border-collapse:collapse;margin:12px 0 24px}
   th,td{text-align:left;padding:8px 10px;border-bottom:1px solid #e2e8f0;font-size:14px}
   th{color:#64748b;font-weight:600}
-  .brand{color:#1f43f5;font-weight:700}
+  .brand{color:#2f4156;font-weight:700}
 </style></head><body>
   <p class="brand">SentinelAI</p>
   <h1>${template.title}</h1>
