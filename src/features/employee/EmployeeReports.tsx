@@ -58,7 +58,7 @@ export function EmployeeReports() {
   const { user } = useAuth()
   const [selected, setSelected] = useState<string>('wellness')
   const [range, setRange] = useState('7d')
-  const [format, setFormat] = useState<'csv' | 'html'>('csv')
+  const [format, setFormat] = useState<'csv' | 'html' | 'pdf'>('pdf')
   const [generating, setGenerating] = useState(false)
   const [ready, setReady] = useState(false)
   const [exporting, setExporting] = useState(false)
@@ -166,21 +166,31 @@ export function EmployeeReports() {
     if (!ready) return
     setExporting(true)
     setStatus(null)
-    const file = buildFile()
-    // 1) Download locally.
-    downloadFile(file.filename, file.mime, file.content)
+    // 1) Download locally. PDF uses the print-to-PDF flow; CSV/HTML download directly.
+    let emailName: string
+    let emailContent: string
+    if (format === 'pdf') {
+      printReport()
+      emailName = `${slug(template.title)}-${range}.html`
+      emailContent = buildHtml()
+    } else {
+      const file = buildFile()
+      downloadFile(file.filename, file.mime, file.content)
+      emailName = file.filename
+      emailContent = file.content
+    }
     // 2) Email the same document to the signed-in user.
     try {
       const sentTo = await emailReport({
         title: template.title,
         dateRange: periodLabel,
-        filename: file.filename,
-        contentBase64: toBase64(file.content),
+        filename: emailName,
+        contentBase64: toBase64(emailContent),
         metrics,
       })
-      setStatus(sentTo ? `Downloaded and emailed to ${sentTo}.` : 'Downloaded and emailed.')
+      setStatus(sentTo ? `Exported and emailed to ${sentTo}.` : 'Exported and emailed.')
     } catch (e) {
-      setStatus(`Downloaded. Email could not be sent: ${e instanceof Error ? e.message : 'unknown error'}`)
+      setStatus(`Exported. Email could not be sent: ${e instanceof Error ? e.message : 'unknown error'}`)
     } finally {
       setExporting(false)
     }
@@ -250,7 +260,8 @@ export function EmployeeReports() {
               </Select>
             </Field>
             <Field label="Format">
-              <Select value={format} onChange={(e) => setFormat(e.target.value as 'csv' | 'html')}>
+              <Select value={format} onChange={(e) => setFormat(e.target.value as 'csv' | 'html' | 'pdf')}>
+                <option value="pdf">PDF (print-ready)</option>
                 <option value="csv">CSV (spreadsheet)</option>
                 <option value="html">HTML (printable)</option>
               </Select>
