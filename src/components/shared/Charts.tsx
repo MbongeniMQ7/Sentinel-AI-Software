@@ -15,7 +15,7 @@ import {
   YAxis,
 } from 'recharts'
 
-export const CHART_COLORS = ['#3563ff', '#10b981', '#f59e0b', '#f43f5e', '#8b5cf6', '#06b6d4', '#ec4899']
+export const CHART_COLORS = ['#567c8d', '#2f4156', '#7099b0', '#e4c65a', '#9fbccf', '#c8d9e6', '#b9992f']
 
 const axisProps = {
   tickLine: false,

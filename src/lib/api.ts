@@ -69,6 +69,7 @@ export interface BreakRequest {
   employee: string
   reason: string
   requestedAt: string
+  requestedAtIso: string | null
   duration: number
   status: 'pending' | 'approved' | 'rejected' | 'active'
 }
@@ -315,6 +316,7 @@ async function fetchBreakRequests(): Promise<BreakRequest[]> {
     employee: row.profiles?.full_name ?? 'Unknown',
     reason: row.reason ?? '',
     requestedAt: relativeTime(row.requested_at),
+    requestedAtIso: row.requested_at ?? null,
     duration: row.duration_min ?? 0,
     status: (row.status === 'completed' ? 'approved' : row.status ?? 'pending') as BreakRequest['status'],
   }))
@@ -1298,6 +1300,79 @@ export async function savePlatformSettings(input: PlatformSettings): Promise<voi
       updated_at: new Date().toISOString(),
     },
     { onConflict: 'id' },
+  )
+  unwrap(error)
+}
+
+// ---------------------------------------------------------------------------
+// Company settings (manager Settings page)
+// ---------------------------------------------------------------------------
+
+export interface CompanySettings {
+  defaultShift: string
+  fatigueThreshold: string
+  breakLength: string
+  notifyCritical: boolean
+  notifyDigest: boolean
+  notifyEscalation: boolean
+  autoApproveBreaks: boolean
+  autoEscalatePpe: boolean
+}
+
+export const DEFAULT_COMPANY_SETTINGS: CompanySettings = {
+  defaultShift: 'Morning',
+  fatigueThreshold: '60',
+  breakLength: '15',
+  notifyCritical: true,
+  notifyDigest: true,
+  notifyEscalation: true,
+  autoApproveBreaks: false,
+  autoEscalatePpe: true,
+}
+
+async function fetchCompanySettings(companyId: string | null): Promise<CompanySettings> {
+  if (!companyId) return DEFAULT_COMPANY_SETTINGS
+  const { data, error } = await supabase
+    .from('company_settings')
+    .select(
+      'default_shift, fatigue_threshold, break_length, notify_critical, notify_digest, notify_escalation, auto_approve_breaks, auto_escalate_ppe',
+    )
+    .eq('company_id', companyId)
+    .maybeSingle()
+  if (error) throw error
+  if (!data) return DEFAULT_COMPANY_SETTINGS
+  return {
+    defaultShift: data.default_shift ?? DEFAULT_COMPANY_SETTINGS.defaultShift,
+    fatigueThreshold: String(data.fatigue_threshold ?? DEFAULT_COMPANY_SETTINGS.fatigueThreshold),
+    breakLength: String(data.break_length ?? DEFAULT_COMPANY_SETTINGS.breakLength),
+    notifyCritical: data.notify_critical ?? true,
+    notifyDigest: data.notify_digest ?? true,
+    notifyEscalation: data.notify_escalation ?? true,
+    autoApproveBreaks: data.auto_approve_breaks ?? false,
+    autoEscalatePpe: data.auto_escalate_ppe ?? true,
+  }
+}
+
+export function useCompanySettings(companyId: string | null) {
+  return useQuery<CompanySettings>(() => fetchCompanySettings(companyId), DEFAULT_COMPANY_SETTINGS, [companyId])
+}
+
+/** Manager/owner saves a company's settings (upserts by company_id). */
+export async function saveCompanySettings(companyId: string, input: CompanySettings): Promise<void> {
+  const { error } = await supabase.from('company_settings').upsert(
+    {
+      company_id: companyId,
+      default_shift: input.defaultShift,
+      fatigue_threshold: Number(input.fatigueThreshold),
+      break_length: Number(input.breakLength),
+      notify_critical: input.notifyCritical,
+      notify_digest: input.notifyDigest,
+      notify_escalation: input.notifyEscalation,
+      auto_approve_breaks: input.autoApproveBreaks,
+      auto_escalate_ppe: input.autoEscalatePpe,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: 'company_id' },
   )
   unwrap(error)
 }

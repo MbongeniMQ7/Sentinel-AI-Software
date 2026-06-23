@@ -48,7 +48,7 @@ export function ManagerAnalytics() {
         <Card className="lg:col-span-2">
           <CardHeader title="Department comparison" subtitle="Average fatigue index by department" />
           <CardBody>
-            <BarSeries data={departmentFatigue} xKey="department" series={[{ key: 'avgFatigue', label: 'Avg fatigue', color: '#3563ff' }]} height={280} />
+            <BarSeries data={departmentFatigue} xKey="department" series={[{ key: 'avgFatigue', label: 'Avg fatigue', color: '#567c8d' }]} height={280} />
           </CardBody>
         </Card>
         <Card>
@@ -71,7 +71,7 @@ export function ManagerAnalytics() {
         <Card>
           <CardHeader title="Trend: actual vs predicted" subtitle="Model forecast tracking against measured fatigue" />
           <CardBody>
-            <TrendLine data={forecast} xKey="day" series={[{ key: 'actual', label: 'Actual', color: '#3563ff' }, { key: 'predicted', label: 'Predicted', color: '#8b5cf6' }]} height={260} />
+            <TrendLine data={forecast} xKey="day" series={[{ key: 'actual', label: 'Actual', color: '#567c8d' }, { key: 'predicted', label: 'Predicted', color: '#8b5cf6' }]} height={260} />
           </CardBody>
         </Card>
         <Card>

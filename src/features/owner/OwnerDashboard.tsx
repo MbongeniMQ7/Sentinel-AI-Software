@@ -20,7 +20,7 @@ export function OwnerDashboard() {
 
   const planDist = [
     { name: 'Starter', value: companies.filter((c) => c.plan === 'Starter').length, color: '#06b6d4' },
-    { name: 'Growth', value: companies.filter((c) => c.plan === 'Growth').length, color: '#3563ff' },
+    { name: 'Growth', value: companies.filter((c) => c.plan === 'Growth').length, color: '#567c8d' },
     { name: 'Enterprise', value: companies.filter((c) => c.plan === 'Enterprise').length, color: '#8b5cf6' },
   ]
 
@@ -90,7 +90,7 @@ export function OwnerDashboard() {
               series={[
                 { key: 'fatigue', label: 'Fatigue', color: '#f59e0b' },
                 { key: 'drowsiness', label: 'Drowsiness', color: '#f43f5e' },
-                { key: 'distraction', label: 'Distraction', color: '#3563ff' },
+                { key: 'distraction', label: 'Distraction', color: '#567c8d' },
               ]}
               height={220}
             />
