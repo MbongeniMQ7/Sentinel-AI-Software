@@ -1,28 +1,26 @@
 import { useNavigate } from 'react-router-dom'
 import {
+  Activity,
   ArrowRight,
   CheckCircle2,
+  Clock,
+  HeartPulse,
+  Lock,
   Play,
   ShieldCheck,
-  Coffee,
-  HeartPulse,
-  Activity,
   Shield,
-  Clock,
-  Lock,
   Cpu,
   Zap,
-  Building2,
   Check,
 } from 'lucide-react'
-import { Button } from '@/components/ui/Button'
-import { Badge } from '@/components/ui/Badge'
 import { logoUrl } from '@/components/shared/Logo'
+import { LanguageSwitcher } from '@/components/shared/LanguageSwitcher'
+import { useI18n } from '@/lib/i18n'
 
 export function Landing() {
   const navigate = useNavigate()
+  const { t } = useI18n()
   const goSignIn = () => navigate('/auth/role')
-
   return (
     <div className="min-h-full bg-palette-beige text-palette-navy font-sans antialiased">
       {/* Decorative top ambient bar */}
@@ -44,11 +42,12 @@ export function Landing() {
             <a href="#cta" className="transition-colors hover:text-palette-navy">Access Sandbox</a>
           </nav>
           <div className="flex items-center gap-3">
+            <LanguageSwitcher />
             <button 
               className="text-sm font-semibold text-palette-navy hover:text-palette-teal transition-colors px-3 py-2" 
               onClick={goSignIn}
             >
-              Sign in
+              {t('cta.signIn')}
             </button>
           </div>
         </div>
@@ -103,7 +102,6 @@ export function Landing() {
           </div>
         </div>
       </section>
-
       {/* Visual Safety Framework: Operational Telemetry Loop */}
       <section id="interactive-preview" className="py-20 sm:py-28 bg-palette-white border-y border-palette-skyblue relative overflow-hidden">
         {/* Soft background grids */}
@@ -521,7 +519,7 @@ export function Landing() {
       <footer className="border-t border-palette-skyblue bg-palette-white py-12 text-xs">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-6 px-4 sm:flex-row sm:px-6">
           <div className="flex items-center gap-2 text-[#567C8D] font-medium">
-            <ShieldCheck className="h-4 w-4 text-[#567C8D]" /> © 2026 SentinelAI. All safety-standard models registered.
+            <ShieldCheck className="h-4 w-4 text-[#567C8D]" /> © 2026 SentinelAI. All rights reserved.
           </div>
           <div className="flex gap-6 text-[#567C8D] font-bold">
             <a href="#" className="hover:text-palette-navy transition-colors">Privacy Policy</a>

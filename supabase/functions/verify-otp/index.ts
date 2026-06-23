@@ -59,7 +59,7 @@ Deno.serve(async (req: Request) => {
   // this email (no account_roles row), reject before doing any work.
   const { data: account, error: accountErr } = await supabase
     .from('account_roles')
-    .select('email')
+    .select('email, is_active')
     .eq('email', email)
     .maybeSingle()
 
@@ -67,6 +67,12 @@ Deno.serve(async (req: Request) => {
   if (!account) {
     return jsonResponse(
       { error: "This email isn't registered. Ask your administrator to invite you first." },
+      403,
+    )
+  }
+  if (account.is_active === false) {
+    return jsonResponse(
+      { error: 'This account has been suspended. Please contact your administrator.' },
       403,
     )
   }
@@ -125,13 +131,14 @@ Deno.serve(async (req: Request) => {
   // Role / company come from the account_roles mapping (defaults to employee).
   const { data: mapping } = await supabase
     .from('account_roles')
-    .select('role, company_id, full_name, title, phone, avatar_url')
+    .select('role, company_id, full_name, title, phone, avatar_url, is_active')
     .eq('email', email)
     .maybeSingle()
 
   const role = mapping?.role ?? 'employee'
   const fullName = mapping?.full_name ?? email.split('@')[0]
   const companyId = mapping?.company_id ?? null
+  const isActive = mapping?.is_active ?? true
 
   // Link the profile to the auth user id so RLS (auth.uid()) resolves the role.
   const { error: upsertErr } = await supabase.from('profiles').upsert(
@@ -144,7 +151,7 @@ Deno.serve(async (req: Request) => {
       title: mapping?.title ?? null,
       phone: mapping?.phone ?? null,
       avatar_url: mapping?.avatar_url ?? null,
-      is_active: true,
+      is_active: isActive,
       last_active_at: new Date().toISOString(),
     },
     { onConflict: 'id' },

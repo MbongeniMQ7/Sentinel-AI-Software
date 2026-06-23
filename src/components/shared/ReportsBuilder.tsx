@@ -19,18 +19,189 @@ interface ReportsBuilderProps {
   chart: ReactNode
 }
 
+type Format = 'pdf' | 'csv' | 'xlsx'
+
+const RANGE_LABELS: Record<string, string> = {
+  '7d': 'Last 7 days',
+  '30d': 'Last 30 days',
+  quarter: 'This quarter',
+  year: 'This year',
+}
+
+function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '')
+}
+
+function downloadBlob(content: BlobPart, mime: string, filename: string) {
+  const blob = new Blob([content], { type: mime })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
 export function ReportsBuilder({ templates, previewTitle, previewSubtitle, kpis, chart }: ReportsBuilderProps) {
   const [selected, setSelected] = useState(templates[0]?.id)
+  const [format, setFormat] = useState<Format>('pdf')
+  const [range, setRange] = useState('30d')
   const [generating, setGenerating] = useState(false)
   const [ready, setReady] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const generate = () => {
-    setGenerating(true)
-    setReady(false)
-    setTimeout(() => {
-      setGenerating(false)
+  const selectedTemplate = templates.find((t) => t.id === selected) ?? templates[0]
+  const reportTitle = selectedTemplate?.title ?? previewTitle
+  const rangeLabel = RANGE_LABELS[range] ?? range
+  const generatedAt = new Date().toLocaleString()
+
+  const meta: [string, string][] = [
+    ['Report', reportTitle],
+    ['Scope', previewSubtitle],
+    ['Date range', rangeLabel],
+    ['Generated', generatedAt],
+  ]
+
+  const baseFilename = `${slugify(reportTitle)}-${new Date().toISOString().slice(0, 10)}`
+
+  const csvCell = (value: string): string => {
+    const s = String(value ?? '')
+    return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+  }
+
+  const buildCsv = (): string => {
+    const rows: string[][] = []
+    rows.push(['SentinelAI report'])
+    meta.forEach(([k, v]) => rows.push([k, v]))
+    rows.push([])
+    rows.push(['Metric', 'Value'])
+    kpis.forEach((k) => rows.push([k.label, k.value]))
+    return rows.map((r) => r.map(csvCell).join(',')).join('\r\n')
+  }
+
+  // An HTML-table workbook that Excel/Sheets open natively as .xls.
+  const buildXls = (): string => {
+    const metaRows = meta
+      .map(([k, v]) => `<tr><th align="left">${escapeHtml(k)}</th><td>${escapeHtml(v)}</td></tr>`)
+      .join('')
+    const kpiRows = kpis
+      .map((k) => `<tr><td>${escapeHtml(k.label)}</td><td>${escapeHtml(k.value)}</td></tr>`)
+      .join('')
+    return `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8" /></head><body>
+      <table border="0">${metaRows}</table>
+      <br />
+      <table border="1"><tr><th>Metric</th><th>Value</th></tr>${kpiRows}</table>
+    </body></html>`
+  }
+
+  // Reports are generated entirely client-side so export works for every role
+  // (employee, manager/admin and owner) without depending on a backend service.
+  const exportReport = async (fmt: Format = format) => {
+    setError(null)
+    try {
+      if (fmt === 'pdf') {
+        // Render a branded, printable document the user can save as PDF.
+        printReport()
+      } else if (fmt === 'csv') {
+        downloadBlob('\uFEFF' + buildCsv(), 'text/csv;charset=utf-8', `${baseFilename}.csv`)
+      } else {
+        downloadBlob(buildXls(), 'application/vnd.ms-excel', `${baseFilename}.xls`)
+      }
       setReady(true)
-    }, 1100)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not generate the report')
+    }
+  }
+
+  const buildPrintHtml = (): string => {
+    const metaRows = meta
+      .map(([k, v]) => `<tr><th>${escapeHtml(k)}</th><td>${escapeHtml(v)}</td></tr>`)
+      .join('')
+    const kpiCards = kpis
+      .map(
+        (k) =>
+          `<div class="kpi"><div class="kpi-value">${escapeHtml(k.value)}</div><div class="kpi-label">${escapeHtml(k.label)}</div></div>`,
+      )
+      .join('')
+    return `<!DOCTYPE html><html><head><meta charset="utf-8" /><title>${escapeHtml(reportTitle)}</title>
+      <style>
+        *{box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;}
+        body{margin:0;padding:40px;color:#0f172a;}
+        h1{margin:0 0 4px;font-size:24px;}
+        .sub{color:#64748b;margin:0 0 24px;font-size:14px;}
+        table{border-collapse:collapse;margin-bottom:24px;}
+        th,td{text-align:left;padding:6px 16px 6px 0;font-size:13px;color:#475569;}
+        th{color:#0f172a;font-weight:600;}
+        .kpis{display:flex;flex-wrap:wrap;gap:16px;margin-bottom:24px;}
+        .kpi{border:1px solid #e2e8f0;border-radius:12px;padding:16px 20px;min-width:140px;}
+        .kpi-value{font-size:22px;font-weight:700;}
+        .kpi-label{font-size:12px;color:#64748b;margin-top:2px;}
+        .brand{display:flex;align-items:center;gap:8px;margin-bottom:24px;font-weight:700;color:#2f4156;}
+        @media print{body{padding:24px;}}
+      </style></head><body>
+      <div class="brand">SentinelAI</div>
+      <h1>${escapeHtml(reportTitle)}</h1>
+      <p class="sub">${escapeHtml(previewSubtitle)} · ${escapeHtml(rangeLabel)}</p>
+      <table>${metaRows}</table>
+      <div class="kpis">${kpiCards}</div>
+      <p class="sub">Generated by SentinelAI on ${escapeHtml(generatedAt)}</p>
+    </body></html>`
+  }
+
+  const printReport = () => {
+    const w = window.open('', '_blank', 'width=900,height=700')
+    if (!w) return
+    w.document.write(buildPrintHtml())
+    w.document.close()
+    w.focus()
+    w.onload = () => {
+      w.print()
+    }
+    // Fallback in case onload doesn't fire for the written document.
+    setTimeout(() => {
+      try {
+        w.print()
+      } catch {
+        /* noop */
+      }
+    }, 400)
+  }
+
+  const shareReport = async () => {
+    const summary = `${reportTitle}\n${previewSubtitle} · ${rangeLabel}\n\n${kpis
+      .map((k) => `${k.label}: ${k.value}`)
+      .join('\n')}\n\nGenerated by SentinelAI on ${generatedAt}`
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: reportTitle, text: summary })
+      } else if (navigator.clipboard) {
+        await navigator.clipboard.writeText(summary)
+      }
+    } catch {
+      /* user dismissed the share sheet */
+    }
+  }
+
+  const generate = async () => {
+    setGenerating(true)
+    try {
+      await exportReport()
+    } finally {
+      setGenerating(false)
+    }
   }
 
   return (
@@ -54,14 +225,15 @@ export function ReportsBuilder({ templates, previewTitle, previewSubtitle, kpis,
             ))}
           </div>
           <Field label="Date range">
-            <Select defaultValue="30d"><option value="7d">Last 7 days</option><option value="30d">Last 30 days</option><option value="quarter">This quarter</option><option value="year">This year</option></Select>
+            <Select value={range} onChange={(e) => { setRange(e.target.value); setReady(false) }}><option value="7d">Last 7 days</option><option value="30d">Last 30 days</option><option value="quarter">This quarter</option><option value="year">This year</option></Select>
           </Field>
           <Field label="Format">
-            <Select defaultValue="pdf"><option value="pdf">PDF</option><option value="csv">CSV</option><option value="xlsx">Excel</option></Select>
+            <Select value={format} onChange={(e) => setFormat(e.target.value as Format)}><option value="pdf">PDF</option><option value="csv">CSV</option><option value="xlsx">Excel</option></Select>
           </Field>
           <Button className="w-full" onClick={generate} loading={generating}>
             {!generating && <Sparkles className="h-4 w-4" />} {generating ? 'Generating…' : 'Generate report'}
           </Button>
+          {error && <p className="rounded-lg bg-rose-50 px-3 py-2 text-xs text-rose-600 dark:bg-rose-950/40">{error}</p>}
         </CardBody>
       </Card>
 
@@ -70,9 +242,9 @@ export function ReportsBuilder({ templates, previewTitle, previewSubtitle, kpis,
           title="Preview"
           action={
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" disabled={!ready}><Printer className="h-3.5 w-3.5" /> Print</Button>
-              <Button variant="outline" size="sm" disabled={!ready}><Share2 className="h-3.5 w-3.5" /> Share</Button>
-              <Button size="sm" disabled={!ready}><Download className="h-3.5 w-3.5" /> Export</Button>
+              <Button variant="outline" size="sm" disabled={!ready} onClick={printReport}><Printer className="h-3.5 w-3.5" /> Print</Button>
+              <Button variant="outline" size="sm" disabled={!ready} onClick={shareReport}><Share2 className="h-3.5 w-3.5" /> Share</Button>
+              <Button size="sm" disabled={!ready} onClick={() => exportReport()}><Download className="h-3.5 w-3.5" /> Export</Button>
             </div>
           }
         />

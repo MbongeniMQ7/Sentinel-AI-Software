@@ -1,20 +1,22 @@
-import { useMemo, useState } from 'react'
-import { Building2, Cpu, Plus, Search, Users } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { Building2, Cpu, Plus, Search, ShieldCheck, Users } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Card, CardBody } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input, Select } from '@/components/ui/Input'
 import { Drawer } from '@/components/ui/Drawer'
 import { Badge } from '@/components/ui/Badge'
+import { Avatar } from '@/components/ui/Avatar'
 import { Progress } from '@/components/ui/Progress'
 import { EmptyState } from '@/components/shared/States'
 import { StatusBadge } from '@/components/shared/Badges'
 import { KpiCard } from '@/components/shared/KpiCard'
 import { TrendArea } from '@/components/shared/Charts'
-import { useCompanies, useRevenueTrend, createCompany, type Company } from '@/lib/api'
+import { useCompanies, useRevenueTrend, usePlatformUsers, createCompany, updateCompanyBilling, type Company } from '@/lib/api'
 import { formatCurrency } from '@/lib/utils'
 
 const planTones = { Starter: 'info', Growth: 'brand', Enterprise: 'purple' } as const
+const roleTones = { Employee: 'neutral', Manager: 'purple', Owner: 'success' } as const
 
 export function OwnerCompanies() {
   const [query, setQuery] = useState('')
@@ -22,6 +24,44 @@ export function OwnerCompanies() {
   const [selected, setSelected] = useState<Company | null>(null)
   const { data: companies, refetch } = useCompanies()
   const { data: revenueTrend } = useRevenueTrend()
+  const { data: allUsers } = usePlatformUsers()
+
+  // Billing edit state for the selected company
+  const [billing, setBilling] = useState({ plan: 'Starter', seats: '0', status: 'active' })
+  const [savingBilling, setSavingBilling] = useState(false)
+  const [billingMsg, setBillingMsg] = useState<{ tone: 'ok' | 'err'; msg: string } | null>(null)
+
+  useEffect(() => {
+    if (selected) setBilling({ plan: selected.plan, seats: String(selected.seats), status: selected.status })
+    setBillingMsg(null)
+  }, [selected])
+
+  const members = useMemo(
+    () =>
+      allUsers
+        .filter((u) => u.companyId === selected?.id)
+        .sort((a, b) => (a.role === b.role ? 0 : a.role === 'manager' ? -1 : 1)),
+    [allUsers, selected],
+  )
+
+  const saveBilling = async () => {
+    if (!selected) return
+    setSavingBilling(true)
+    setBillingMsg(null)
+    try {
+      await updateCompanyBilling(selected.id, {
+        plan: billing.plan as Company['plan'],
+        seats: Number(billing.seats) || 0,
+        status: billing.status as Company['status'],
+      })
+      setBillingMsg({ tone: 'ok', msg: 'Billing updated.' })
+      refetch()
+    } catch (e) {
+      setBillingMsg({ tone: 'err', msg: e instanceof Error ? e.message : 'Could not update billing' })
+    } finally {
+      setSavingBilling(false)
+    }
+  }
 
   const [addOpen, setAddOpen] = useState(false)
   const [form, setForm] = useState({ name: '', industry: '', plan: 'Starter', seats: '10', status: 'trial' })
@@ -111,10 +151,10 @@ export function OwnerCompanies() {
         title={selected?.name}
         subtitle={selected ? `${selected.industry} · ${selected.id}` : ''}
         width="lg"
-        footer={<><Button variant="outline" className="flex-1">Manage billing</Button><Button className="flex-1">View company</Button></>}
+        footer={<Button className="flex-1" onClick={() => setSelected(null)}>Done</Button>}
       >
         {selected && (
-          <div className="space-y-5">
+          <div className="space-y-6">
             <div className="flex items-center gap-2"><Badge tone={planTones[selected.plan]}>{selected.plan}</Badge><StatusBadge status={selected.status} /></div>
             <div className="grid grid-cols-2 gap-3">
               {[
@@ -126,6 +166,66 @@ export function OwnerCompanies() {
                 <div key={s.l} className="rounded-xl bg-surface-subtle p-3"><p className="text-lg font-bold text-ink">{s.v}</p><p className="text-xs text-ink-muted">{s.l}</p></div>
               ))}
             </div>
+
+            {/* Registered members */}
+            <div>
+              <div className="mb-2 flex items-center justify-between">
+                <p className="text-sm font-medium text-ink">Registered users</p>
+                <Badge tone="neutral">{members.length}</Badge>
+              </div>
+              {members.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-line p-4 text-center text-sm text-ink-muted">No managers or workers registered yet.</div>
+              ) : (
+                <div className="divide-y divide-line overflow-hidden rounded-xl border border-line">
+                  {members.map((m) => (
+                    <div key={m.id} className="flex items-center gap-3 p-3">
+                      <Avatar name={m.name} size="sm" status={m.status === 'active' ? 'online' : 'offline'} />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-ink">{m.name}</p>
+                        <p className="truncate text-xs text-ink-subtle">{m.email}</p>
+                      </div>
+                      <Badge tone={roleTones[m.roleLabel]}>{m.roleLabel}</Badge>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Billing management */}
+            <div className="rounded-xl border border-line p-4">
+              <div className="mb-3 flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4 text-brand-600" />
+                <p className="text-sm font-medium text-ink">Manage billing</p>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div>
+                  <label className="mb-1.5 block text-xs font-medium text-ink-muted">Plan</label>
+                  <Select value={billing.plan} onChange={(e) => setBilling({ ...billing, plan: e.target.value })}>
+                    <option>Starter</option><option>Growth</option><option>Enterprise</option>
+                  </Select>
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-xs font-medium text-ink-muted">Seats</label>
+                  <Input type="number" min={0} value={billing.seats} onChange={(e) => setBilling({ ...billing, seats: e.target.value })} />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-xs font-medium text-ink-muted">Status</label>
+                  <Select value={billing.status} onChange={(e) => setBilling({ ...billing, status: e.target.value })}>
+                    <option value="active">Active</option>
+                    <option value="trial">Trial</option>
+                    <option value="past-due">Past due</option>
+                    <option value="churned">Churned</option>
+                  </Select>
+                </div>
+              </div>
+              <div className="mt-3 flex items-center justify-between">
+                {billingMsg ? (
+                  <span className={billingMsg.tone === 'ok' ? 'text-sm text-emerald-600' : 'text-sm text-rose-600'}>{billingMsg.msg}</span>
+                ) : <span />}
+                <Button size="sm" onClick={saveBilling} loading={savingBilling}>Save billing</Button>
+              </div>
+            </div>
+
             <div>
               <p className="mb-2 text-sm font-medium text-ink">Revenue trend</p>
               <TrendArea data={revenueTrend} xKey="month" series={[{ key: 'mrr', label: 'MRR', color: '#10b981' }]} height={180} />

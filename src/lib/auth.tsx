@@ -11,6 +11,7 @@ export interface SessionUser {
   email: string
   role: Role
   title: string
+  phone: string
   avatarUrl: string
   companyId: string | null
 }
@@ -35,7 +36,7 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 async function loadProfile(userId: string, fallbackEmail: string): Promise<SessionUser | null> {
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, full_name, email, role, title, avatar_url, company_id')
+    .select('id, full_name, email, role, title, phone, avatar_url, company_id')
     .eq('id', userId)
     .maybeSingle()
 
@@ -47,6 +48,7 @@ async function loadProfile(userId: string, fallbackEmail: string): Promise<Sessi
     email: data.email ?? fallbackEmail,
     role,
     title: data.title ?? '',
+    phone: data.phone ?? '',
     avatarUrl: data.avatar_url ?? roleAvatar[role],
     companyId: data.company_id ?? null,
   }

@@ -69,6 +69,7 @@ export interface BreakRequest {
   employee: string
   reason: string
   requestedAt: string
+  requestedAtIso: string | null
   duration: number
   status: 'pending' | 'approved' | 'rejected' | 'active'
 }
@@ -531,29 +532,33 @@ async function fetchEmployees(): Promise<Employee[]> {
   }
 
   const { data, error } = await supabase
-    .from('employee_profiles')
+    .from('profiles')
     .select(`
-      profile_id, job_title, monitoring, status, fatigue_score, heart_rate, risk_level,
-      departments(name), shifts(type),
-      profiles!employee_profiles_profile_id_fkey(id, full_name, email, presence, last_active_at, avatar_url)
+      id, full_name, email, presence, last_active_at, avatar_url,
+      employee_profiles(
+        job_title, monitoring, status, fatigue_score, heart_rate, risk_level,
+        departments(name), shifts(type)
+      )
     `)
+    .eq('role', 'employee')
   if (error) throw error
 
-  return (data ?? []).map((row: any, i: number) => {
-    const p = row.profiles ?? {}
-    const shiftType = row.shifts?.type ?? 'morning'
+  return (data ?? []).map((p: any, i: number) => {
+    const row = Array.isArray(p.employee_profiles) ? p.employee_profiles[0] : p.employee_profiles
+    const ep = row ?? {}
+    const shiftType = ep.shifts?.type ?? 'morning'
     return {
       id: p.id,
       name: p.full_name ?? 'Unknown',
       email: p.email ?? '',
-      role: row.job_title ?? '—',
-      department: row.departments?.name ?? '—',
+      role: ep.job_title ?? '—',
+      department: ep.departments?.name ?? '—',
       shift: cap(shiftType) as Employee['shift'],
-      status: ENUM_TO_DISPLAY.empStatus[row.status] ?? 'offline',
-      fatigue: row.fatigue_score ?? 0,
-      heartRate: row.heart_rate ?? 0,
-      riskLevel: (row.risk_level ?? 'low') as RiskLevel,
-      monitoring: (row.monitoring ?? 'camera') as Employee['monitoring'],
+      status: ENUM_TO_DISPLAY.empStatus[ep.status] ?? 'offline',
+      fatigue: ep.fatigue_score ?? 0,
+      heartRate: ep.heart_rate ?? 0,
+      riskLevel: (ep.risk_level ?? 'low') as RiskLevel,
+      monitoring: (ep.monitoring ?? 'wearable') as Employee['monitoring'],
       device: '—',
       avatarStatus: (p.presence ?? 'offline') as Employee['avatarStatus'],
       lastActive: relativeTime(p.last_active_at),
@@ -676,6 +681,7 @@ async function fetchBreakRequests(): Promise<BreakRequest[]> {
     employee: row.profiles?.full_name ?? 'Unknown',
     reason: row.reason ?? '',
     requestedAt: relativeTime(row.requested_at),
+    requestedAtIso: row.requested_at ?? null,
     duration: row.duration_min ?? 0,
     status: (row.status === 'completed' ? 'approved' : row.status ?? 'pending') as BreakRequest['status'],
   }))
@@ -726,6 +732,54 @@ export function useCompanies() {
   return useQuery<Company[]>(fetchCompanies, [])
 }
 
+export interface PlatformUser {
+  id: string
+  name: string
+  email: string
+  role: 'employee' | 'manager' | 'owner'
+  roleLabel: 'Employee' | 'Manager' | 'Owner'
+  company: string
+  companyId: string | null
+  status: 'active' | 'offline' | 'on-leave'
+  isActive: boolean
+  lastActive: string
+}
+
+const ROLE_LABEL: Record<string, PlatformUser['roleLabel']> = {
+  employee: 'Employee',
+  manager: 'Manager',
+  owner: 'Owner',
+}
+
+async function fetchPlatformUsers(): Promise<PlatformUser[]> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, full_name, email, role, presence, last_active_at, company_id, is_active, companies(name)')
+    .order('role', { ascending: true })
+  if (error) throw error
+
+  return (data ?? []).map((p: any) => {
+    const role = (p.role ?? 'employee') as PlatformUser['role']
+    const company = Array.isArray(p.companies) ? p.companies[0] : p.companies
+    return {
+      id: p.id,
+      name: p.full_name ?? 'Unknown',
+      email: p.email ?? '',
+      role,
+      roleLabel: ROLE_LABEL[role] ?? 'Employee',
+      company: company?.name ?? '—',
+      companyId: p.company_id ?? null,
+      status: p.presence === 'online' ? 'active' : p.presence === 'on_leave' ? 'on-leave' : 'offline',
+      isActive: p.is_active !== false,
+      lastActive: relativeTime(p.last_active_at),
+    }
+  })
+}
+
+export function usePlatformUsers() {
+  return useQuery<PlatformUser[]>(fetchPlatformUsers, [])
+}
+
 async function fetchAuditLogs(): Promise<AuditLog[]> {
   if (IS_DEMO_MODE) {
     return getLocal<AuditLog[]>('sentinel_mock_audit_logs', defaultAuditLogs)
@@ -753,6 +807,149 @@ async function fetchAuditLogs(): Promise<AuditLog[]> {
 
 export function useAuditLogs() {
   return useQuery<AuditLog[]>(fetchAuditLogs, [])
+}
+
+export interface Ticket {
+  id: string
+  number: string
+  subject: string
+  category: string
+  priority: 'low' | 'medium' | 'high' | 'urgent'
+  status: 'open' | 'pending' | 'resolved' | 'closed'
+  escalated: boolean
+  company: string
+  openedBy: string
+  created: string
+}
+
+async function fetchTickets(): Promise<Ticket[]> {
+  const { data, error } = await supabase
+    .from('support_tickets')
+    .select(`
+      id, number, subject, category, priority, status, escalated, created_at,
+      companies(name),
+      profiles!support_tickets_opened_by_fkey(full_name)
+    `)
+    .order('created_at', { ascending: false })
+    .limit(100)
+  if (error) throw error
+
+  return (data ?? []).map((row: any) => ({
+    id: String(row.id),
+    number: row.number ?? '—',
+    subject: row.subject ?? '—',
+    category: row.category ?? 'General',
+    priority: (row.priority ?? 'medium') as Ticket['priority'],
+    status: (row.status === 'in_progress' ? 'pending' : row.status ?? 'open') as Ticket['status'],
+    escalated: row.escalated ?? false,
+    company: row.companies?.name ?? '—',
+    openedBy: row.profiles?.full_name ?? 'Unknown',
+    created: relativeTime(row.created_at),
+  }))
+}
+
+export function useSupportTickets() {
+  return useQuery<Ticket[]>(fetchTickets, [])
+}
+
+export interface TicketReply {
+  id: string
+  body: string
+  author: string
+  mine: boolean
+  created: string
+}
+
+export interface MyTicket {
+  id: string
+  number: string
+  subject: string
+  category: string
+  priority: 'low' | 'medium' | 'high' | 'urgent'
+  status: 'open' | 'pending' | 'resolved' | 'closed'
+  escalated: boolean
+  created: string
+  replies: TicketReply[]
+}
+
+async function fetchMyTickets(userId?: string): Promise<MyTicket[]> {
+  if (!userId) return []
+  const { data, error } = await supabase
+    .from('support_tickets')
+    .select(`
+      id, number, subject, category, priority, status, escalated, created_at,
+      ticket_messages(id, body, author_id, created_at, profiles(full_name))
+    `)
+    .eq('opened_by', userId)
+    .order('created_at', { ascending: false })
+    .limit(50)
+  if (error) throw error
+
+  return (data ?? []).map((row: any) => ({
+    id: String(row.id),
+    number: row.number ?? '—',
+    subject: row.subject ?? '—',
+    category: row.category ?? 'General',
+    priority: (row.priority ?? 'medium') as MyTicket['priority'],
+    status: (row.status === 'in_progress' ? 'pending' : row.status ?? 'open') as MyTicket['status'],
+    escalated: row.escalated ?? false,
+    created: relativeTime(row.created_at),
+    replies: (row.ticket_messages ?? [])
+      .slice()
+      .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+      .map((m: any) => ({
+        id: String(m.id),
+        body: m.body ?? '',
+        author: m.author_id === userId ? 'You' : m.profiles?.full_name ?? 'Support',
+        mine: m.author_id === userId,
+        created: relativeTime(m.created_at),
+      })),
+  }))
+}
+
+export function useMyTickets(userId?: string) {
+  return useQuery<MyTicket[]>(() => fetchMyTickets(userId), [], [userId])
+}
+
+/** Manager escalates a ticket to the platform owner (SentinelAI). */
+export async function escalateTicket(id: string): Promise<void> {
+  const { data, error } = await supabase
+    .from('support_tickets')
+    .update({ escalated: true, status: 'in_progress' })
+    .eq('id', id)
+    .select('number, subject, priority, companies(name)')
+    .single()
+  unwrap(error)
+  if (data) {
+    const company = Array.isArray((data as any).companies)
+      ? (data as any).companies[0]?.name
+      : (data as any).companies?.name
+    notify('ticket_escalated', {
+      number: data.number,
+      subject: data.subject,
+      priority: data.priority,
+      companyName: company ?? null,
+    })
+  }
+}
+
+/** Manager or owner updates a ticket's status. */
+export async function updateTicketStatus(id: string, status: 'open' | 'pending' | 'resolved' | 'closed'): Promise<void> {
+  const dbStatus = status === 'pending' ? 'in_progress' : status
+  const { data, error } = await supabase
+    .from('support_tickets')
+    .update({ status: dbStatus })
+    .eq('id', id)
+    .select('number, subject, opened_by')
+    .single()
+  unwrap(error)
+  if (data && status === 'resolved') {
+    notify('ticket_resolved', {
+      openedById: data.opened_by,
+      number: data.number,
+      subject: data.subject,
+    })
+  }
 }
 
 async function fetchFaqs(): Promise<Faq[]> {
@@ -943,6 +1140,15 @@ function unwrap(error: { message: string } | null) {
   if (error) throw new Error(error.message)
 }
 
+/** Fire-and-forget activity email via the `send-notification` edge function.
+ *  Never throws and is never awaited by callers — email delivery must never
+ *  block or fail the underlying action. Every platform activity routes here. */
+export function notify(type: string, data: Record<string, unknown>): void {
+  void supabase.functions
+    .invoke('send-notification', { body: { type, data } })
+    .catch((err) => console.warn('notify failed:', type, err))
+}
+
 /** Employee submits a new leave request. */
 export async function submitLeaveRequest(input: {
   employeeId: string
@@ -962,6 +1168,13 @@ export async function submitLeaveRequest(input: {
     status: 'pending',
   })
   unwrap(error)
+  notify('leave_submitted', {
+    employeeId: input.employeeId,
+    type: DISPLAY_TO_ENUM.leaveType[input.type] ?? input.type.toLowerCase(),
+    startDate: input.startDate,
+    endDate: input.endDate,
+    reason: input.reason,
+  })
 }
 
 /** Employee submits a new break request. */
@@ -979,24 +1192,50 @@ export async function submitBreakRequest(input: {
     status: 'pending',
   })
   unwrap(error)
+  notify('break_submitted', {
+    employeeId: input.employeeId,
+    reason: input.reason,
+    durationMin: input.durationMin,
+  })
 }
 
 /** Manager/owner approves or rejects a leave request. */
 export async function reviewLeaveRequest(id: string, status: 'approved' | 'rejected', reviewerId: string): Promise<void> {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('leave_requests')
     .update({ status, reviewed_by: reviewerId })
     .eq('id', id)
+    .select('employee_id, type, start_date, end_date')
+    .single()
   unwrap(error)
+  if (data) {
+    notify('leave_reviewed', {
+      employeeId: data.employee_id,
+      status,
+      type: data.type,
+      startDate: data.start_date,
+      endDate: data.end_date,
+    })
+  }
 }
 
 /** Manager/owner approves or rejects a break request. */
 export async function reviewBreakRequest(id: string, status: 'approved' | 'rejected', reviewerId: string): Promise<void> {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('break_requests')
     .update({ status, reviewed_by: reviewerId })
     .eq('id', id)
+    .select('employee_id, reason, duration_min')
+    .single()
   unwrap(error)
+  if (data) {
+    notify('break_reviewed', {
+      employeeId: data.employee_id,
+      status,
+      reason: data.reason,
+      durationMin: data.duration_min,
+    })
+  }
 }
 
 /** Employee acknowledges their own alert. */
@@ -1008,19 +1247,45 @@ export async function acknowledgeAlert(id: string): Promise<void> {
 
 /** Manager/owner transitions an alert (escalate / resolve) and logs the event. */
 export async function updateAlertStatus(id: string, status: AlertStatus, note?: string): Promise<void> {
-  const { error } = await supabase.from('alerts').update({ status }).eq('id', id)
+  const { data, error } = await supabase
+    .from('alerts')
+    .update({ status })
+    .eq('id', id)
+    .select('employee_id, type')
+    .single()
   unwrap(error)
   await supabase.from('alert_events').insert({ alert_id: id, to_status: status, note: note ?? `Marked ${status}` })
+  if (data && (status === 'escalated' || status === 'resolved')) {
+    notify('alert_status', {
+      employeeId: data.employee_id,
+      alertType: ENUM_TO_DISPLAY.alertType[data.type] ?? data.type,
+      status,
+      note,
+    })
+  }
 }
 
 /** Update the signed-in user's own profile fields. */
-export async function saveProfile(input: { id: string; fullName?: string; phone?: string; title?: string }): Promise<void> {
+export async function saveProfile(input: { id: string; fullName?: string; phone?: string; title?: string; avatarUrl?: string }): Promise<void> {
   const patch: Record<string, unknown> = { updated_at: new Date().toISOString() }
   if (input.fullName !== undefined) patch.full_name = input.fullName
   if (input.phone !== undefined) patch.phone = input.phone
   if (input.title !== undefined) patch.title = input.title
+  if (input.avatarUrl !== undefined) patch.avatar_url = input.avatarUrl
   const { error } = await supabase.from('profiles').update(patch).eq('id', input.id)
   unwrap(error)
+}
+
+/** Upload a new avatar image to the public-assets bucket and return its URL. */
+export async function uploadAvatar(userId: string, file: File): Promise<string> {
+  const ext = (file.name.split('.').pop() || 'png').toLowerCase()
+  const path = `avatars/${userId}-${Date.now()}.${ext}`
+  const { error } = await supabase.storage
+    .from('public-assets')
+    .upload(path, file, { cacheControl: '3600', upsert: true, contentType: file.type || undefined })
+  if (error) throw new Error(error.message)
+  const { data } = supabase.storage.from('public-assets').getPublicUrl(path)
+  return data.publicUrl
 }
 
 /** Update an employee's monitoring mode (self or manager). */
@@ -1132,6 +1397,14 @@ export async function submitSupportTicket(input: {
       body: input.message,
     })
   }
+  notify('ticket_submitted', {
+    openedById: input.openedBy,
+    companyId: input.companyId,
+    number,
+    subject: input.subject,
+    category: input.category,
+    priority: input.priority,
+  })
 }
 
 /** Manager/owner adds a device to the fleet. */
@@ -1151,12 +1424,33 @@ export async function addDevice(input: {
     assigned_to: input.assignedTo || null,
   })
   unwrap(error)
+  if (input.assignedTo) {
+    notify('device_assigned', {
+      assignedToId: input.assignedTo,
+      deviceName: input.name,
+      type: input.type,
+      location: input.location,
+    })
+  }
 }
 
 /** Manager/owner reassigns a device to an employee (or unassigns when null). */
 export async function reassignDevice(id: string, assignedTo: string | null): Promise<void> {
-  const { error } = await supabase.from('devices').update({ assigned_to: assignedTo }).eq('id', id)
+  const { data, error } = await supabase
+    .from('devices')
+    .update({ assigned_to: assignedTo })
+    .eq('id', id)
+    .select('name, type, location')
+    .single()
   unwrap(error)
+  if (assignedTo && data) {
+    notify('device_assigned', {
+      assignedToId: assignedTo,
+      deviceName: data.name,
+      type: ENUM_TO_DISPLAY.deviceType[data.type] ?? data.type,
+      location: data.location,
+    })
+  }
 }
 
 /** Owner/manager invites a user — provisions their role and emails them.
@@ -1199,6 +1493,42 @@ export async function inviteUser(input: {
     throw new Error(message)
   }
   if (data && data.success === false) throw new Error(data.error ?? 'Could not send invite')
+}
+
+/** Privileged owner-only account actions routed through the `manage-user`
+ *  edge function (service-role writes to other users' profiles +
+ *  account_roles, plus a branded email to the affected user). */
+async function manageUser(body: Record<string, unknown>): Promise<void> {
+  const { data, error } = await supabase.functions.invoke('manage-user', { body })
+  if (error) {
+    let message = error.message
+    const ctx = (error as { context?: Response }).context
+    if (ctx && typeof ctx.json === 'function') {
+      try {
+        const parsed = await ctx.json()
+        if (parsed?.error) message = parsed.error
+      } catch {
+        /* ignore parse errors */
+      }
+    }
+    throw new Error(message)
+  }
+  if (data && data.success === false) throw new Error(data.error ?? 'Action failed')
+}
+
+/** Owner changes another user's platform role (and emails them). */
+export async function updateUserRole(userId: string, role: 'employee' | 'manager' | 'owner'): Promise<void> {
+  await manageUser({ action: 'update_role', userId, role })
+}
+
+/** Owner resets a user's passwordless sign-in — revokes sessions, emails them. */
+export async function resetUserPassword(userId: string): Promise<void> {
+  await manageUser({ action: 'reset_password', userId })
+}
+
+/** Owner suspends or reactivates a user account (and emails them). */
+export async function setUserSuspended(userId: string, suspended: boolean): Promise<void> {
+  await manageUser({ action: 'set_suspended', userId, suspended })
 }
 
 /** Owner creates a new company (tenant) plus its initial subscription.
@@ -1255,5 +1585,215 @@ export async function createCompany(input: {
   })
   unwrap(subErr)
 
+  notify('company_created', {
+    companyName: name,
+    plan: input.plan,
+    seats,
+    status,
+  })
+
   return companyId
 }
+
+export async function updateCompanyBilling(
+  companyId: string,
+  input: { plan: 'Starter' | 'Growth' | 'Enterprise'; seats: number; status: 'active' | 'trial' | 'past-due' | 'churned' },
+): Promise<void> {
+  const { data: plan, error: planErr } = await supabase
+    .from('plans')
+    .select('id, price_per_seat_cents')
+    .eq('tier', input.plan.toLowerCase())
+    .maybeSingle()
+  unwrap(planErr)
+  if (!plan) throw new Error('Selected plan is not available')
+
+  const seats = Math.max(0, Math.floor(input.seats || 0))
+  const companyStatus = { active: 'active', trial: 'trial', 'past-due': 'past_due', churned: 'churned' }[input.status]
+  const subStatus = { active: 'active', trial: 'trialing', 'past-due': 'past_due', churned: 'canceled' }[input.status]
+
+  const { error: companyErr } = await supabase
+    .from('companies')
+    .update({ plan_id: plan.id, seats, status: companyStatus })
+    .eq('id', companyId)
+  unwrap(companyErr)
+
+  const { error: subErr } = await supabase
+    .from('subscriptions')
+    .update({ plan_id: plan.id, seats, status: subStatus, mrr_cents: seats * (plan.price_per_seat_cents ?? 0) })
+    .eq('company_id', companyId)
+  unwrap(subErr)
+
+  notify('billing_updated', {
+    companyId,
+    plan: input.plan,
+    seats,
+    status: input.status,
+  })
+}
+
+// ============================================================================
+// Platform settings (owner)
+// ============================================================================
+
+export interface PlatformSettings {
+  platformName: string
+  supportEmail: string
+  notifyBilling: boolean
+  notifySecurity: boolean
+  notifyProduct: boolean
+  notifyChurn: boolean
+}
+
+const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
+  platformName: 'SentinelAI',
+  supportEmail: 'info@sentinelai-software.co.za',
+  notifyBilling: true,
+  notifySecurity: true,
+  notifyProduct: false,
+  notifyChurn: true,
+}
+
+async function fetchPlatformSettings(): Promise<PlatformSettings> {
+  const { data, error } = await supabase
+    .from('platform_settings')
+    .select('platform_name, support_email, notify_billing, notify_security, notify_product, notify_churn')
+    .eq('id', true)
+    .maybeSingle()
+  if (error) throw error
+  if (!data) return DEFAULT_PLATFORM_SETTINGS
+  return {
+    platformName: data.platform_name ?? DEFAULT_PLATFORM_SETTINGS.platformName,
+    supportEmail: data.support_email ?? DEFAULT_PLATFORM_SETTINGS.supportEmail,
+    notifyBilling: data.notify_billing ?? true,
+    notifySecurity: data.notify_security ?? true,
+    notifyProduct: data.notify_product ?? false,
+    notifyChurn: data.notify_churn ?? true,
+  }
+}
+
+export function usePlatformSettings() {
+  return useQuery<PlatformSettings>(fetchPlatformSettings, DEFAULT_PLATFORM_SETTINGS, [])
+}
+
+/** Owner saves the platform settings (upserts the singleton row). */
+export async function savePlatformSettings(input: PlatformSettings): Promise<void> {
+  const { error } = await supabase.from('platform_settings').upsert(
+    {
+      id: true,
+      platform_name: input.platformName.trim() || 'SentinelAI',
+      support_email: input.supportEmail.trim(),
+      notify_billing: input.notifyBilling,
+      notify_security: input.notifySecurity,
+      notify_product: input.notifyProduct,
+      notify_churn: input.notifyChurn,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: 'id' },
+  )
+  unwrap(error)
+}
+
+// ---------------------------------------------------------------------------
+// Company settings (manager Settings page)
+// ---------------------------------------------------------------------------
+
+export interface CompanySettings {
+  defaultShift: string
+  fatigueThreshold: string
+  breakLength: string
+  notifyCritical: boolean
+  notifyDigest: boolean
+  notifyEscalation: boolean
+  autoApproveBreaks: boolean
+  autoEscalatePpe: boolean
+}
+
+export const DEFAULT_COMPANY_SETTINGS: CompanySettings = {
+  defaultShift: 'Morning',
+  fatigueThreshold: '60',
+  breakLength: '15',
+  notifyCritical: true,
+  notifyDigest: true,
+  notifyEscalation: true,
+  autoApproveBreaks: false,
+  autoEscalatePpe: true,
+}
+
+async function fetchCompanySettings(companyId: string | null): Promise<CompanySettings> {
+  if (!companyId) return DEFAULT_COMPANY_SETTINGS
+  const { data, error } = await supabase
+    .from('company_settings')
+    .select(
+      'default_shift, fatigue_threshold, break_length, notify_critical, notify_digest, notify_escalation, auto_approve_breaks, auto_escalate_ppe',
+    )
+    .eq('company_id', companyId)
+    .maybeSingle()
+  if (error) throw error
+  if (!data) return DEFAULT_COMPANY_SETTINGS
+  return {
+    defaultShift: data.default_shift ?? DEFAULT_COMPANY_SETTINGS.defaultShift,
+    fatigueThreshold: String(data.fatigue_threshold ?? DEFAULT_COMPANY_SETTINGS.fatigueThreshold),
+    breakLength: String(data.break_length ?? DEFAULT_COMPANY_SETTINGS.breakLength),
+    notifyCritical: data.notify_critical ?? true,
+    notifyDigest: data.notify_digest ?? true,
+    notifyEscalation: data.notify_escalation ?? true,
+    autoApproveBreaks: data.auto_approve_breaks ?? false,
+    autoEscalatePpe: data.auto_escalate_ppe ?? true,
+  }
+}
+
+export function useCompanySettings(companyId: string | null) {
+  return useQuery<CompanySettings>(() => fetchCompanySettings(companyId), DEFAULT_COMPANY_SETTINGS, [companyId])
+}
+
+/** Manager/owner saves a company's settings (upserts by company_id). */
+export async function saveCompanySettings(companyId: string, input: CompanySettings): Promise<void> {
+  const { error } = await supabase.from('company_settings').upsert(
+    {
+      company_id: companyId,
+      default_shift: input.defaultShift,
+      fatigue_threshold: Number(input.fatigueThreshold),
+      break_length: Number(input.breakLength),
+      notify_critical: input.notifyCritical,
+      notify_digest: input.notifyDigest,
+      notify_escalation: input.notifyEscalation,
+      auto_approve_breaks: input.autoApproveBreaks,
+      auto_escalate_ppe: input.autoEscalatePpe,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: 'company_id' },
+  )
+  unwrap(error)
+}
+
+// ============================================================================
+// Reports — email a generated report to the signed-in user
+// ============================================================================
+
+/** Emails a generated report (as a file attachment) to the signed-in user via
+ *  the `send-report` edge function. `contentBase64` is the base64-encoded file. */
+export async function emailReport(input: {
+  title: string
+  dateRange: string
+  filename: string
+  contentBase64: string
+  metrics?: { label: string; value: string }[]
+}): Promise<string> {
+  const { data, error } = await supabase.functions.invoke('send-report', { body: input })
+  if (error) {
+    let message = error.message
+    const ctx = (error as { context?: Response }).context
+    if (ctx && typeof ctx.json === 'function') {
+      try {
+        const parsed = await ctx.json()
+        if (parsed?.error) message = parsed.error
+      } catch {
+        /* ignore parse errors */
+      }
+    }
+    throw new Error(message)
+  }
+  if (data && data.ok === false) throw new Error(data.error ?? 'Could not email the report')
+  return (data?.sentTo as string) ?? ''
+}
+

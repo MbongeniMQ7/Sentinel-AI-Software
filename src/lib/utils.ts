@@ -21,6 +21,15 @@ export function formatCompact(n: number) {
   return new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(n)
 }
 
+/** Time-of-day greeting based on the viewer's local clock. */
+export function timeGreeting(date: Date = new Date()): string {
+  const h = date.getHours()
+  if (h < 12) return 'Good morning'
+  if (h < 17) return 'Good afternoon'
+  if (h < 21) return 'Good evening'
+  return 'Good night'
+}
+
 export function initials(name: string) {
   return name
     .split(' ')

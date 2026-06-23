@@ -1,11 +1,9 @@
 import {
-  Activity,
   AlertTriangle,
   BadgeDollarSign,
   Bell,
   Building2,
   CalendarDays,
-  Camera,
   ClipboardList,
   Coffee,
   Cpu,
@@ -14,9 +12,9 @@ import {
   HeartPulse,
   HelpCircle,
   LayoutDashboard,
+  LifeBuoy,
   LineChart,
   Network,
-  Receipt,
   ScrollText,
   Settings,
   ShieldCheck,
@@ -46,8 +44,8 @@ export const navConfig: Record<Role, NavGroup[]> = {
       title: 'Overview',
       items: [
         { label: 'Dashboard', to: '/user/dashboard', icon: LayoutDashboard },
-        { label: 'Live Monitoring', to: '/user/monitoring', icon: Camera },
-        { label: 'Alert Center', to: '/user/alerts', icon: AlertTriangle, badge: '3' },
+        { label: 'Live Monitoring', to: '/user/monitoring', icon: HeartPulse },
+        { label: 'Alert Center', to: '/user/alerts', icon: AlertTriangle },
       ],
     },
     {
@@ -73,7 +71,7 @@ export const navConfig: Record<Role, NavGroup[]> = {
       items: [
         { label: 'Dashboard', to: '/admin/dashboard', icon: LayoutDashboard },
         { label: 'Workforce', to: '/admin/workforce', icon: Users },
-        { label: 'Alerts', to: '/admin/alerts', icon: AlertTriangle, badge: '7' },
+        { label: 'Alerts', to: '/admin/alerts', icon: AlertTriangle },
         { label: 'Fatigue Analytics', to: '/admin/analytics', icon: LineChart },
       ],
     },
@@ -81,7 +79,8 @@ export const navConfig: Record<Role, NavGroup[]> = {
       title: 'Management',
       items: [
         { label: 'Devices', to: '/admin/devices', icon: Cpu },
-        { label: 'Approvals', to: '/admin/approvals', icon: ClipboardList, badge: '5' },
+        { label: 'Approvals', to: '/admin/approvals', icon: ClipboardList },
+        { label: 'Support', to: '/admin/support', icon: LifeBuoy },
         { label: 'Reports', to: '/admin/reports', icon: FileBarChart },
         { label: 'Onboarding', to: '/admin/onboarding', icon: UserPlus },
       ],
@@ -97,26 +96,38 @@ export const navConfig: Record<Role, NavGroup[]> = {
   ],
   owner: [
     {
-      title: 'Executive',
+      title: 'Overview',
       items: [
-        { label: 'Dashboard', to: '/owner/dashboard', icon: LayoutDashboard },
-        { label: 'Activity', to: '/owner/activity', icon: Activity },
+        { label: 'Home', to: '/owner/dashboard', icon: LayoutDashboard },
+        { label: 'Users', to: '/owner/users', icon: Users },
+        { label: 'Companies', to: '/owner/companies', icon: Building2 },
+      ],
+    },
+    {
+      title: 'Financials',
+      items: [
         { label: 'Revenue', to: '/owner/revenue', icon: LineChart },
       ],
     },
     {
-      title: 'Platform',
+      title: 'Safety & Monitoring',
       items: [
-        { label: 'Companies', to: '/owner/companies', icon: Building2 },
-        { label: 'Users', to: '/owner/users', icon: Users },
-        { label: 'IoT Fleet', to: '/owner/fleet', icon: Cpu },
+        { label: 'Alerts', to: '/owner/alerts', icon: AlertTriangle },
+        { label: 'IoT Wristbands', to: '/owner/fleet', icon: Cpu },
       ],
     },
     {
-      title: 'Business',
+      title: 'Operations',
       items: [
-        { label: 'Billing', to: '/owner/billing', icon: Receipt },
+        { label: 'Issues', to: '/owner/issues', icon: HelpCircle },
+        { label: 'Audit Log', to: '/owner/audit', icon: ScrollText },
         { label: 'Reports', to: '/owner/reports', icon: FileBarChart },
+      ],
+    },
+    {
+      title: 'Management',
+      items: [
+        { label: 'Create Manager', to: '/owner/create-manager', icon: UserPlus },
         { label: 'Settings', to: '/owner/settings', icon: Settings },
       ],
     },
