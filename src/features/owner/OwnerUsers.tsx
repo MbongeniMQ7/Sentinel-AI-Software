@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Download, MoreVertical, Search, ShieldCheck, UserPlus, Users } from 'lucide-react'
+import { Ban, Download, KeyRound, MoreVertical, Search, ShieldCheck, UserCheck, UserPlus, Users } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Card, CardBody } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -12,28 +12,65 @@ import { DataTable, type Column } from '@/components/ui/DataTable'
 import { EmptyState } from '@/components/shared/States'
 import { StatusBadge } from '@/components/shared/Badges'
 import { KpiCard } from '@/components/shared/KpiCard'
-import { useEmployees, useCompanies, inviteUser } from '@/lib/api'
+import {
+  usePlatformUsers,
+  useCompanies,
+  inviteUser,
+  updateUserRole,
+  resetUserPassword,
+  setUserSuspended,
+  type PlatformUser,
+} from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 
-interface GlobalUser {
-  id: string
-  name: string
-  email: string
-  role: 'Employee' | 'Manager' | 'Owner' | 'Admin'
-  company: string
-  status: 'active' | 'offline' | 'on-leave'
-  lastActive: string
-}
-
-const roleTones = { Employee: 'neutral', Manager: 'purple', Owner: 'success', Admin: 'info' } as const
+const roleTones = { Employee: 'neutral', Manager: 'purple', Owner: 'success' } as const
 
 export function OwnerUsers() {
   const [query, setQuery] = useState('')
   const [role, setRole] = useState('all')
   const [addOpen, setAddOpen] = useState(false)
   const { user } = useAuth()
-  const { data: employees } = useEmployees()
+  const { data: users, refetch } = usePlatformUsers()
   const { data: companies } = useCompanies()
+
+  // Row actions (edit role / reset password / suspend)
+  const [actionUser, setActionUser] = useState<PlatformUser | null>(null)
+  const [actionKind, setActionKind] = useState<'role' | 'reset' | 'suspend' | null>(null)
+  const [newRole, setNewRole] = useState<'employee' | 'manager' | 'owner'>('employee')
+  const [actionBusy, setActionBusy] = useState(false)
+  const [actionErr, setActionErr] = useState<string | null>(null)
+
+  const openAction = (u: PlatformUser, kind: 'role' | 'reset' | 'suspend') => {
+    setActionUser(u)
+    setActionKind(kind)
+    setNewRole(u.role)
+    setActionErr(null)
+  }
+
+  const closeAction = () => {
+    if (actionBusy) return
+    setActionUser(null)
+    setActionKind(null)
+    setActionErr(null)
+  }
+
+  const confirmAction = async () => {
+    if (!actionUser || !actionKind) return
+    setActionBusy(true)
+    setActionErr(null)
+    try {
+      if (actionKind === 'role') await updateUserRole(actionUser.id, newRole)
+      else if (actionKind === 'reset') await resetUserPassword(actionUser.id)
+      else if (actionKind === 'suspend') await setUserSuspended(actionUser.id, actionUser.isActive)
+      setActionUser(null)
+      setActionKind(null)
+      refetch()
+    } catch (e) {
+      setActionErr(e instanceof Error ? e.message : 'Action failed')
+    } finally {
+      setActionBusy(false)
+    }
+  }
 
   // Invite form
   const [inviteEmail, setInviteEmail] = useState('')
@@ -66,10 +103,11 @@ export function OwnerUsers() {
         fullName: inviteName,
         phone: invitePhone,
       })
-      setInviteMsg(`Invitation sent to ${inviteEmail}.`)
+      setInviteMsg(`${inviteEmail} was added to the platform.`)
       setInviteEmail('')
       setInviteName('')
       setInvitePhone('')
+      refetch()
     } catch (e) {
       setInviteErr(e instanceof Error ? e.message : 'Could not create invite')
     } finally {
@@ -77,26 +115,26 @@ export function OwnerUsers() {
     }
   }
 
-  const users: GlobalUser[] = useMemo(
-    () =>
-      employees.map((e, i) => ({
-        id: e.id,
-        name: e.name,
-        email: e.email,
-        role: (['Employee', 'Employee', 'Manager', 'Admin', 'Owner'] as const)[i % 5],
-        company: companies.length ? companies[i % companies.length].name : '—',
-        status: e.status === 'on-leave' ? 'on-leave' : e.status === 'offline' ? 'offline' : 'active',
-        lastActive: e.lastActive,
-      })),
-    [employees, companies],
-  )
-
   const filtered = useMemo(
-    () => users.filter((u) => (role === 'all' || u.role === role) && (!query || u.name.toLowerCase().includes(query.toLowerCase()) || u.email.toLowerCase().includes(query.toLowerCase()))),
+    () => users.filter((u) => (role === 'all' || u.roleLabel === role) && (!query || u.name.toLowerCase().includes(query.toLowerCase()) || u.email.toLowerCase().includes(query.toLowerCase()))),
     [query, role, users],
   )
 
-  const columns: Column<GlobalUser>[] = [
+  const exportCsv = () => {
+    const headers = ['Name', 'Email', 'Role', 'Company', 'Status', 'Last active']
+    const escape = (v: string) => `"${String(v).replace(/"/g, '""')}"`
+    const rows = filtered.map((u) => [u.name, u.email, u.roleLabel, u.company, u.status, u.lastActive].map(escape).join(','))
+    const csv = [headers.join(','), ...rows].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `users-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const columns: Column<PlatformUser>[] = [
     {
       key: 'name',
       header: 'User',
@@ -107,19 +145,28 @@ export function OwnerUsers() {
         </div>
       ),
     },
-    { key: 'role', header: 'Role', render: (u) => <Badge tone={roleTones[u.role]}>{u.role}</Badge> },
+    { key: 'role', header: 'Role', render: (u) => <Badge tone={roleTones[u.roleLabel]}>{u.roleLabel}</Badge> },
     { key: 'company', header: 'Company', render: (u) => u.company, hideOnMobile: true },
-    { key: 'status', header: 'Status', render: (u) => <StatusBadge status={u.status} />, hideOnMobile: true },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (u) => (u.isActive ? <StatusBadge status={u.status} /> : <Badge tone="danger">Suspended</Badge>),
+      hideOnMobile: true,
+    },
     { key: 'last', header: 'Last active', render: (u) => u.lastActive, hideOnMobile: true },
     {
       key: 'actions',
       header: '',
-      render: () => (
+      render: (u) => (
         <Dropdown trigger={<Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button>}>
-          <DropdownItem icon={<ShieldCheck className="h-4 w-4" />}>Edit role</DropdownItem>
-          <DropdownItem>Reset password</DropdownItem>
+          <DropdownItem icon={<ShieldCheck className="h-4 w-4" />} onClick={() => openAction(u, 'role')}>Edit role</DropdownItem>
+          <DropdownItem icon={<KeyRound className="h-4 w-4" />} onClick={() => openAction(u, 'reset')}>Reset password</DropdownItem>
           <DropdownDivider />
-          <DropdownItem danger>Suspend user</DropdownItem>
+          {u.isActive ? (
+            <DropdownItem danger icon={<Ban className="h-4 w-4" />} onClick={() => openAction(u, 'suspend')}>Suspend user</DropdownItem>
+          ) : (
+            <DropdownItem icon={<UserCheck className="h-4 w-4" />} onClick={() => openAction(u, 'suspend')}>Reactivate user</DropdownItem>
+          )}
         </Dropdown>
       ),
     },
@@ -130,14 +177,14 @@ export function OwnerUsers() {
       <PageHeader
         title="User Management"
         description="Global directory of every user across the platform."
-        actions={<Button size="sm" onClick={() => setAddOpen(true)}><UserPlus className="h-4 w-4" /> Invite user</Button>}
+        actions={<Button size="sm" onClick={() => setAddOpen(true)}><UserPlus className="h-4 w-4" /> Add user</Button>}
       />
 
       <div className="mb-5 grid gap-4 sm:grid-cols-4">
         <KpiCard label="Total users" value={users.length} icon={<Users className="h-5 w-5" />} tone="brand" />
         <KpiCard label="Active" value={users.filter((u) => u.status === 'active').length} icon={<Users className="h-5 w-5" />} tone="success" />
-        <KpiCard label="Managers" value={users.filter((u) => u.role === 'Manager').length} icon={<ShieldCheck className="h-5 w-5" />} tone="purple" />
-        <KpiCard label="Admins" value={users.filter((u) => u.role === 'Admin').length} icon={<ShieldCheck className="h-5 w-5" />} tone="info" />
+        <KpiCard label="Managers" value={users.filter((u) => u.roleLabel === 'Manager').length} icon={<ShieldCheck className="h-5 w-5" />} tone="purple" />
+        <KpiCard label="Owners" value={users.filter((u) => u.roleLabel === 'Owner').length} icon={<ShieldCheck className="h-5 w-5" />} tone="info" />
       </div>
 
       <Card>
@@ -146,9 +193,9 @@ export function OwnerUsers() {
           <div className="flex items-center gap-2 sm:ml-auto">
             <Select value={role} onChange={(e) => setRole(e.target.value)} className="w-40">
               <option value="all">All roles</option>
-              <option>Employee</option><option>Manager</option><option>Admin</option><option>Owner</option>
+              <option>Employee</option><option>Manager</option><option>Owner</option>
             </Select>
-            <Button variant="outline" size="icon"><Download className="h-4 w-4" /></Button>
+            <Button variant="outline" size="icon" onClick={exportCsv} disabled={filtered.length === 0} aria-label="Export users"><Download className="h-4 w-4" /></Button>
           </div>
         </div>
         <CardBody className="p-0">
@@ -163,9 +210,9 @@ export function OwnerUsers() {
       <Modal
         open={addOpen}
         onClose={() => setAddOpen(false)}
-        title="Invite user"
-        description="Send an invitation to join the platform."
-        footer={<><Button variant="outline" onClick={() => setAddOpen(false)} disabled={sending}>Close</Button><Button onClick={sendInvite} disabled={sending}>{sending ? 'Sending…' : 'Send invite'}</Button></>}
+        title="Add user to platform"
+        description="Create an account and grant platform access."
+        footer={<><Button variant="outline" onClick={() => setAddOpen(false)} disabled={sending}>Close</Button><Button onClick={sendInvite} disabled={sending}>{sending ? 'Adding…' : 'Add user'}</Button></>}
       >
         <div className="space-y-4">
           {inviteErr && <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-600 dark:bg-rose-950/40">{inviteErr}</p>}
@@ -178,6 +225,69 @@ export function OwnerUsers() {
             <p className="rounded-lg bg-surface-subtle px-3 py-2 text-xs text-ink-muted">Owners have platform-wide access and aren't tied to a company. They'll sign in with this email using the OTP code we send.</p>
           ) : (
             <Field label="Company"><Select value={inviteCompany} onChange={(e) => setInviteCompany(e.target.value)}>{companies.map((c) => <option key={c.id}>{c.name}</option>)}</Select></Field>
+          )}
+        </div>
+      </Modal>
+
+      <Modal
+        open={actionUser !== null}
+        onClose={closeAction}
+        title={
+          actionKind === 'role'
+            ? 'Edit role'
+            : actionKind === 'reset'
+              ? 'Reset password'
+              : actionUser?.isActive
+                ? 'Suspend user'
+                : 'Reactivate user'
+        }
+        description={actionUser ? `${actionUser.name} · ${actionUser.email}` : undefined}
+        footer={
+          <>
+            <Button variant="outline" onClick={closeAction} disabled={actionBusy}>Cancel</Button>
+            <Button
+              onClick={confirmAction}
+              disabled={actionBusy || (actionKind === 'role' && actionUser?.role === newRole)}
+              variant={actionKind === 'suspend' && actionUser?.isActive ? 'danger' : 'primary'}
+            >
+              {actionBusy
+                ? 'Working…'
+                : actionKind === 'role'
+                  ? 'Save role'
+                  : actionKind === 'reset'
+                    ? 'Send reset email'
+                    : actionUser?.isActive
+                      ? 'Suspend user'
+                      : 'Reactivate user'}
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          {actionErr && <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-600 dark:bg-rose-950/40">{actionErr}</p>}
+
+          {actionKind === 'role' && (
+            <Field label="Role">
+              <Select value={newRole} onChange={(e) => setNewRole(e.target.value as 'employee' | 'manager' | 'owner')}>
+                <option value="employee">Employee</option>
+                <option value="manager">Manager / Admin</option>
+                <option value="owner">Owner</option>
+              </Select>
+            </Field>
+          )}
+
+          {actionKind === 'reset' && (
+            <p className="text-sm text-ink-muted">
+              SentinelAI is passwordless. This will sign the user out of all sessions and email them a secure prompt to sign back in with a fresh one-time code.
+            </p>
+          )}
+
+          {actionKind === 'suspend' && (
+            <p className="text-sm text-ink-muted">
+              {actionUser?.isActive
+                ? 'The user will be signed out and blocked from signing in until reactivated. They will be notified by email.'
+                : 'The user will be able to sign in again right away. They will be notified by email.'}
+            </p>
           )}
         </div>
       </Modal>

@@ -15,7 +15,8 @@
 //
 // Secrets (set with `supabase secrets set`):
 //   RESEND_API_KEY   — Resend API key (required)
-//   OTP_FROM_EMAIL   — verified sender, defaults to onboarding@resend.dev
+//   OTP_FROM_EMAIL   — verified sender, defaults to no-reply@mmqtech.co.za
+//   OTP_REPLY_TO     — monitored reply mailbox, defaults to support@mmqtech.co.za
 //   OTP_APP_NAME     — branding, defaults to "SentinelAI"
 //   INVITE_APP_URL   — sign-in URL, defaults to the production site
 //
@@ -25,6 +26,7 @@
 
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { corsHeaders, jsonResponse } from '../_shared/cors.ts'
+import { APP_NAME, APP_URL, sendBrandedEmail, type BrandedEmailOptions } from '../_shared/email.ts'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const ROLES = ['employee', 'manager', 'owner'] as const
@@ -42,81 +44,31 @@ function randomToken(): string {
     : Math.random().toString(36).slice(2) + Date.now().toString(36)
 }
 
-function inviteEmailHtml(opts: {
-  appName: string
-  logoUrl: string
+function inviteEmailOpts(opts: {
   signInUrl: string
   roleLabel: string
   companyName: string | null
   inviterName: string | null
   invitee: string
-}): string {
-  const { appName, logoUrl, signInUrl, roleLabel, companyName, inviterName, invitee } = opts
-  const year = new Date().getFullYear()
+}): BrandedEmailOptions {
+  const { signInUrl, roleLabel, companyName, inviterName, invitee } = opts
   const intro = inviterName
-    ? `${inviterName} has added you to ${appName}`
-    : `You've been added to ${appName}`
+    ? `${inviterName} has added you to ${APP_NAME}`
+    : `You've been added to ${APP_NAME}`
   const scope = companyName
     ? `as a <strong style="color:#1f43f5;">${roleLabel}</strong> for <strong style="color:#0f172a;">${companyName}</strong>`
     : `as a <strong style="color:#1f43f5;">${roleLabel}</strong>`
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="color-scheme" content="light dark" />
-  <title>You've been invited to ${appName}</title>
-</head>
-<body style="margin:0;padding:0;background:#eef2fb;-webkit-font-smoothing:antialiased;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-  <span style="display:none!important;visibility:hidden;opacity:0;height:0;width:0;overflow:hidden;mso-hide:all;">${intro} ${scope.replace(/<[^>]+>/g, '')}. Sign in with ${invitee} to get started.</span>
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#eef2fb;padding:32px 16px;">
-    <tr>
-      <td align="center">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;width:100%;background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 10px 40px rgba(31,67,245,0.10);">
-          <tr>
-            <td style="background:linear-gradient(135deg,#1f43f5 0%,#3563ff 100%);padding:32px 32px 28px;text-align:center;">
-              <img src="${logoUrl}" width="56" height="56" alt="${appName}" style="display:inline-block;width:56px;height:56px;object-fit:contain;border:0;outline:none;text-decoration:none;" />
-              <div style="margin-top:12px;font-size:20px;font-weight:700;letter-spacing:-0.3px;color:#ffffff;">${appName}</div>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:36px 36px 8px;text-align:center;">
-              <h1 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#0f172a;letter-spacing:-0.4px;">You're invited</h1>
-              <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:#475569;">
-                ${intro} ${scope}.
-              </p>
-              <p style="margin:0 0 28px;font-size:15px;line-height:1.6;color:#475569;">
-                Sign in with this email address — <strong style="color:#0f172a;">${invitee}</strong> — and we'll send a one-time code to verify it's you. No password required.
-              </p>
-              <table role="presentation" align="center" cellpadding="0" cellspacing="0" style="margin:0 auto;">
-                <tr>
-                  <td style="border-radius:12px;background:linear-gradient(135deg,#1f43f5 0%,#3563ff 100%);">
-                    <a href="${signInUrl}" target="_blank" style="display:inline-block;padding:14px 32px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:12px;">Sign in to ${appName}</a>
-                  </td>
-                </tr>
-              </table>
-              <p style="margin:28px 0 0;font-size:13px;line-height:1.55;color:#94a3b8;">
-                If you weren't expecting this invitation, you can safely ignore this email.
-              </p>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:28px 36px 0;">
-              <div style="border-top:1px solid #eef2fb;"></div>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:18px 36px 32px;text-align:center;">
-              <p style="margin:0 0 4px;font-size:12px;color:#94a3b8;">Sent by ${appName} · Workforce Fatigue &amp; Wellness Platform</p>
-              <p style="margin:0;font-size:12px;color:#cbd5e1;">© ${year} ${appName}. All rights reserved.</p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>`
+  return {
+    preheader: `${intro} ${scope.replace(/<[^>]+>/g, '')}. Sign in with ${invitee} to get started.`,
+    heading: 'Welcome to SentinelAI',
+    intro: [
+      `${intro} ${scope}.`,
+      `Sign in with this email address — <strong style="color:#0f172a;">${invitee}</strong> — and we'll send a one-time code to verify it's you. No password required.`,
+    ],
+    banner: 'welcome',
+    cta: { label: `Sign in to ${APP_NAME}`, url: signInUrl },
+    footnote: "If you weren't expecting this, you can safely ignore this email.",
+  }
 }
 
 Deno.serve(async (req: Request) => {
@@ -224,41 +176,25 @@ Deno.serve(async (req: Request) => {
     companyName = company?.name ?? null
   }
 
-  // ---- Send the invitation email via Resend --------------------------------
-  const appName = Deno.env.get('OTP_APP_NAME') ?? 'SentinelAI'
-  const fromEmail = Deno.env.get('OTP_FROM_EMAIL') ?? 'onboarding@resend.dev'
-  const signInUrl = Deno.env.get('INVITE_APP_URL') ?? 'https://sentinel-ai-software.vercel.app'
-  const logoUrl =
-    Deno.env.get('OTP_LOGO_URL') ??
-    `${Deno.env.get('SUPABASE_URL')}/storage/v1/object/public/public-assets/logo.png`
+  // ---- Send the invitation email via Resend (shared banner template) -------
+  const signInUrl = Deno.env.get('INVITE_APP_URL') ?? APP_URL
 
-  const emailRes = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${resendKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      from: `${appName} <${fromEmail}>`,
-      to: [email],
-      subject: companyName
-        ? `You've been added to ${companyName} on ${appName}`
-        : `You've been invited to ${appName}`,
-      html: inviteEmailHtml({
-        appName,
-        logoUrl,
-        signInUrl,
-        roleLabel: ROLE_LABELS[role],
-        companyName,
-        inviterName: caller.full_name ?? null,
-        invitee: email,
-      }),
+  const sent = await sendBrandedEmail({
+    resendKey,
+    to: email,
+    subject: companyName
+      ? `You've been added to ${companyName} on ${APP_NAME}`
+      : `You've been added to ${APP_NAME}`,
+    opts: inviteEmailOpts({
+      signInUrl,
+      roleLabel: ROLE_LABELS[role],
+      companyName,
+      inviterName: caller.full_name ?? null,
+      invitee: email,
     }),
   })
 
-  if (!emailRes.ok) {
-    const detail = await emailRes.text()
-    console.error('Resend error', emailRes.status, detail)
+  if (!sent) {
     // The account is provisioned even if the email fails — report partial success.
     return jsonResponse(
       { success: true, emailed: false, error: 'Account added but the email could not be sent' },

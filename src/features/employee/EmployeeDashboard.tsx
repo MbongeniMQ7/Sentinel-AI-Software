@@ -21,6 +21,7 @@ import { TrendArea } from '@/components/shared/Charts'
 import { RiskBadge } from '@/components/shared/Badges'
 import { useFatigueTrend, useAlerts } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
+import { timeGreeting } from '@/lib/utils'
 
 const quickActions = [
   { label: 'Request Break', icon: Coffee, to: '/user/breaks', tone: 'bg-amber-50 text-amber-600 dark:bg-amber-950/40' },
@@ -38,7 +39,7 @@ export function EmployeeDashboard() {
   return (
     <div>
       <PageHeader
-        title={`Good shift, ${user?.name.split(' ')[0]}`}
+        title={`${timeGreeting()}, ${user?.name.split(' ')[0]}`}
         description="Here's your wellness snapshot for today."
         actions={
           <>
