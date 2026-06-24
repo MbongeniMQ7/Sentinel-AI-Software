@@ -26,7 +26,7 @@ export function ManagerDevices() {
 
   // Add-device form
   const [name, setName] = useState('')
-  const [type, setType] = useState('Camera')
+  const [type, setType] = useState('Wearable Band')
   const [assignName, setAssignName] = useState('')
   const [location, setLocation] = useState('')
   const [saving, setSaving] = useState(false)
@@ -57,7 +57,7 @@ export function ManagerDevices() {
       await addDevice({ companyId: user.companyId, name, type, location, assignedTo: assignee?.id ?? null })
       setAddOpen(false)
       setName('')
-      setType('Camera')
+      setType('Wearable Band')
       setAssignName('')
       setLocation('')
       refetch()
@@ -197,7 +197,7 @@ export function ManagerDevices() {
         <div className="space-y-4">
           {error && <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-600 dark:bg-rose-950/40">{error}</p>}
           <Field label="Device name" required><Input placeholder="e.g. Camera A-14" value={name} onChange={(e) => setName(e.target.value)} /></Field>
-          <Field label="Type" required><Select value={type} onChange={(e) => setType(e.target.value)}><option>Camera</option><option>Wearable Band</option><option>Edge Gateway</option><option>Helmet Sensor</option></Select></Field>
+          <Field label="Type" required><Select value={type} onChange={(e) => setType(e.target.value)}><option>Wearable Band</option></Select></Field>
           <Field label="Assign to"><Select value={assignName} onChange={(e) => setAssignName(e.target.value)}><option value="">Unassigned</option>{employees.map((e) => <option key={e.id}>{e.name}</option>)}</Select></Field>
           <Field label="Location"><Input placeholder="e.g. Assembly · Zone 3" value={location} onChange={(e) => setLocation(e.target.value)} /></Field>
         </div>
