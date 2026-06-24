@@ -221,6 +221,11 @@ export async function sendBrandedEmail(input: {
     subject: input.subject,
     html: renderBrandedEmail(input.opts),
     text: renderBrandedText(input.opts),
+    headers: {
+      // Bulk-sender signals that help inbox placement (Gmail/Yahoo guidelines).
+      'List-Unsubscribe': `<mailto:${REPLY_TO}?subject=unsubscribe>`,
+      'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+    },
   }
   if (input.attachments?.length) body.attachments = input.attachments
 
