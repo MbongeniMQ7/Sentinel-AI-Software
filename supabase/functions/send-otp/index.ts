@@ -10,8 +10,8 @@
 //
 // Secrets (set with `supabase secrets set`):
 //   RESEND_API_KEY   — Resend API key (required)
-//   OTP_FROM_EMAIL   — verified sender, defaults to no-reply@mmqtech.co.za
-//   OTP_REPLY_TO     — monitored reply mailbox, defaults to support@mmqtech.co.za
+//   OTP_FROM_EMAIL   — verified sender, defaults to info@sentinelai-software.co.za
+//   OTP_REPLY_TO     — monitored reply mailbox, defaults to info@sentinelai-software.co.za
 //   OTP_APP_NAME     — branding used in the email, defaults to "SentinelAI"
 //
 // Auto-injected by the Supabase runtime:
