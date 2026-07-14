@@ -1,7 +1,13 @@
 import { createClient } from '@supabase/supabase-js'
 
 const url = import.meta.env.VITE_SUPABASE_URL || 'https://fohowwcyimfhtasqusys.supabase.co'
-const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'mock-anon-key'
+const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_vZK_pxXB-eV_sRgnrtEaQQ_YSQYeCaG'
+
+// Demo mode is based on the RESOLVED endpoint, not on whether the env var is
+// present. This guarantees a real deployment (which falls back to the real URL
+// + publishable key above) always calls the live backend and actually sends
+// OTP emails, instead of silently short-circuiting into a mock session.
+const IS_DEMO = url.includes('placeholder') || url.includes('mock') || anonKey === 'mock-anon-key'
 
 // We will not throw dynamic crashes so the entire application is fully loadable 
 // as an offline preview frontend.
@@ -17,8 +23,7 @@ const FUNCTIONS_BASE = `${url}/functions/v1`
 
 /** Request an OTP code be emailed to the address. */
 export async function requestOtp(email: string): Promise<void> {
-  const isDemo = !import.meta.env.VITE_SUPABASE_URL || import.meta.env.VITE_SUPABASE_URL.includes('placeholder') || import.meta.env.VITE_SUPABASE_URL.includes('mock')
-  if (isDemo) {
+  if (IS_DEMO) {
     return // Resolve immediately for demo purposes
   }
 
@@ -36,8 +41,7 @@ export async function requestOtp(email: string): Promise<void> {
  * real Supabase session so RLS-protected queries run as this user.
  */
 export async function verifyOtp(email: string, code: string): Promise<{ role: string }> {
-  const isDemo = !import.meta.env.VITE_SUPABASE_URL || import.meta.env.VITE_SUPABASE_URL.includes('placeholder') || import.meta.env.VITE_SUPABASE_URL.includes('mock')
-  if (isDemo) {
+  if (IS_DEMO) {
     // Determine target mock role
     let role = 'employee'
     const value = email.trim().toLowerCase()
