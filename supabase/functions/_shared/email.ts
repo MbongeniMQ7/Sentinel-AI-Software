@@ -23,7 +23,10 @@ export const APP_URL = Deno.env.get('APP_URL') ?? 'https://agent.sentinelai-soft
 export const APP_NAME = Deno.env.get('OTP_APP_NAME') ?? 'SentinelAI'
 export const BANNER_URL =
   Deno.env.get('EMAIL_BANNER_URL') ?? `${APP_URL}/banner.png`
-export const FROM_EMAIL = Deno.env.get('OTP_FROM_EMAIL') ?? 'info@sentinelai-software.co.za'
+// FROM_EMAIL must be an address on a Resend-VERIFIED domain, otherwise Resend
+// rejects the send with HTTP 403 and no email is delivered. The only verified
+// sending domain on the account is mmqtech.co.za, so that is the safe default.
+export const FROM_EMAIL = Deno.env.get('OTP_FROM_EMAIL') ?? 'no-reply@mmqtech.co.za'
 export const REPLY_TO = Deno.env.get('OTP_REPLY_TO') ?? 'info@sentinelai-software.co.za'
 export const SUPPORT_EMAIL = Deno.env.get('SUPPORT_EMAIL') ?? 'info@sentinelai-software.co.za'
 export const SUPPORT_PHONE = Deno.env.get('SUPPORT_PHONE') ?? '+27 (0) 10 020 0000'
