@@ -3,7 +3,7 @@ import { Navigate, useNavigate } from 'react-router-dom'
 import { ArrowRight, Mail } from 'lucide-react'
 import { AuthLayout } from './AuthLayout'
 import { Button } from '@/components/ui/Button'
-import { useAuth } from '@/lib/auth'
+import { useAuth, roleHome } from '@/lib/auth'
 import { requestOtp } from '@/lib/supabase'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -15,7 +15,7 @@ export function RoleSelect() {
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  if (user) return <Navigate to="/" replace />
+  if (user) return <Navigate to={roleHome[user.role]} replace />
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()

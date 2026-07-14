@@ -16,11 +16,13 @@ import {
 import { logoUrl } from '@/components/shared/Logo'
 import { LanguageSwitcher } from '@/components/shared/LanguageSwitcher'
 import { useI18n } from '@/lib/i18n'
+import { useAuth, roleHome } from '@/lib/auth'
 
 export function Landing() {
   const navigate = useNavigate()
   const { t } = useI18n()
-  const goSignIn = () => navigate('/auth/role')
+  const { user } = useAuth()
+  const goSignIn = () => navigate(user ? roleHome[user.role] : '/auth/role')
   return (
     <div className="min-h-full bg-palette-beige text-palette-navy font-sans antialiased">
       {/* Decorative top ambient bar */}
