@@ -4,43 +4,22 @@ import { Card, CardBody } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'
+import { EmptyState } from '@/components/shared/States'
+import { useEmployees, usePlatformUsers } from '@/lib/api'
 
 interface Node {
   name: string
   title: string
+  avatarUrl?: string
   reports?: Node[]
   count?: number
-}
-
-const tree: Node = {
-  name: 'Jordan Vale',
-  title: 'VP Operations',
-  reports: [
-    {
-      name: 'Priya Nair',
-      title: 'Shift Manager · Operations',
-      count: 12,
-      reports: [
-        { name: 'Marcus Cole', title: 'Team Lead · Assembly', count: 6 },
-        { name: 'Lena Frost', title: 'Team Lead · Quality', count: 5 },
-      ],
-    },
-    {
-      name: 'Omar Hadid',
-      title: 'Shift Manager · Logistics',
-      count: 9,
-      reports: [
-        { name: 'Sofia Reyes', title: 'Team Lead · Warehouse', count: 7 },
-      ],
-    },
-  ],
 }
 
 function OrgNode({ node, root }: { node: Node; root?: boolean }) {
   return (
     <div className="flex flex-col items-center">
       <div className={`relative w-56 rounded-2xl border p-4 text-center shadow-card ${root ? 'border-brand-300 bg-brand-50/50 dark:bg-brand-950/30' : 'border-line bg-surface'}`}>
-        <Avatar name={node.name} className="mx-auto" status="online" />
+        <Avatar name={node.name} src={node.avatarUrl} className="mx-auto" status="online" />
         <p className="mt-2 text-sm font-semibold text-ink">{node.name}</p>
         <p className="text-xs text-ink-muted">{node.title}</p>
         {node.count !== undefined && <Badge tone="neutral" className="mt-2"><Users className="h-3 w-3" /> {node.count} reports</Badge>}
@@ -62,6 +41,26 @@ function OrgNode({ node, root }: { node: Node; root?: boolean }) {
 }
 
 export function ManagerHierarchy() {
+  const { data: employees } = useEmployees()
+  const { data: platformUsers } = usePlatformUsers()
+
+  const managers = platformUsers.filter((u) => u.role === 'manager')
+  const totalManagers = managers.length
+  const totalEmployees = employees.length
+
+  // Build a simple tree: owner/managers as roots, employees as leaf nodes
+  const tree: Node | null = managers.length > 0
+    ? {
+        name: managers[0]?.name ?? 'Management',
+        title: managers[0] ? 'Manager' : 'Team Lead',
+        reports: managers.slice(1).map((m) => ({
+          name: m.name,
+          title: 'Manager',
+          count: employees.length > 0 ? Math.ceil(employees.length / Math.max(managers.length, 1)) : undefined,
+        })),
+      }
+    : null
+
   return (
     <div>
       <PageHeader
@@ -72,9 +71,9 @@ export function ManagerHierarchy() {
 
       <div className="mb-5 grid gap-4 sm:grid-cols-3">
         {[
-          { l: 'Total managers', v: '4', icon: Network },
-          { l: 'Team leads', v: '4', icon: Users },
-          { l: 'Direct reports', v: '28', icon: Users },
+          { l: 'Managers', v: totalManagers, icon: Network },
+          { l: 'Employees', v: totalEmployees, icon: Users },
+          { l: 'Platform users', v: platformUsers.length, icon: Users },
         ].map((s) => (
           <Card key={s.l} className="flex items-center gap-4 p-5">
             <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-950/40"><s.icon className="h-5 w-5" /></span>
@@ -85,11 +84,16 @@ export function ManagerHierarchy() {
 
       <Card>
         <CardBody className="overflow-x-auto py-8">
-          <div className="flex min-w-max justify-center px-4">
-            <OrgNode node={tree} root />
-          </div>
+          {tree ? (
+            <div className="flex min-w-max justify-center px-4">
+              <OrgNode node={tree} root />
+            </div>
+          ) : (
+            <EmptyState icon={<Network className="h-6 w-6" />} title="No managers found" description="Add managers to build the hierarchy chart." />
+          )}
         </CardBody>
       </Card>
     </div>
   )
 }
+
