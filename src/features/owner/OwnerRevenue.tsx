@@ -2,18 +2,39 @@ import { ArrowDownRight, DollarSign, TrendingUp, Users, Percent } from 'lucide-r
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Card, CardHeader, CardBody } from '@/components/ui/Card'
 import { Select } from '@/components/ui/Input'
-import { Badge } from '@/components/ui/Badge'
 import { KpiCard } from '@/components/shared/KpiCard'
-import { TrendArea, TrendLine, BarSeries } from '@/components/shared/Charts'
-import { useRevenueTrend } from '@/lib/api'
+import { TrendArea, BarSeries } from '@/components/shared/Charts'
+import { useRevenueTrend, useCompanies } from '@/lib/api'
 import { formatCurrency } from '@/lib/utils'
-
-const churnData = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'].map((m, i) => ({ month: m, churn: 2.8 - i * 0.18 + Math.random() * 0.3, retention: 96 + i * 0.4 }))
-const mrrMovement = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'].map((m, i) => ({ month: m, new: 14 + i * 2, expansion: 6 + i, churned: -(3 + (i % 3)) }))
 
 export function OwnerRevenue() {
   const { data: revenueTrend } = useRevenueTrend()
+  const { data: companies } = useCompanies()
+
   const latest = revenueTrend[revenueTrend.length - 1] ?? { month: '', mrr: 0, arr: 0 }
+  const prev = revenueTrend[revenueTrend.length - 2] ?? { mrr: 0, arr: 0 }
+
+  const mrrGrowthPct = prev.mrr ? Math.round(((latest.mrr - prev.mrr) / prev.mrr) * 100) : null
+  const arrGrowthPct = prev.arr ? Math.round(((latest.arr - prev.arr) / prev.arr) * 100) : null
+
+  const totalMrr = companies.reduce((s, c) => s + c.mrr, 0)
+  const activeCompanies = companies.filter((c) => c.status === 'active' || c.status === 'trial')
+  const churnedCompanies = companies.filter((c) => c.status === 'churned')
+  const churnRate = activeCompanies.length + churnedCompanies.length
+    ? Math.round((churnedCompanies.length / (activeCompanies.length + churnedCompanies.length)) * 1000) / 10
+    : 0
+
+  // MRR movement derived from consecutive months
+  const mrrMovement = revenueTrend.slice(-6).map((pt, i, arr) => {
+    const prevMrr = i > 0 ? arr[i - 1].mrr : pt.mrr
+    const delta = pt.mrr - prevMrr
+    return {
+      month: pt.month,
+      new: Math.max(0, delta),
+      expansion: 0,
+      churned: Math.min(0, delta),
+    }
+  })
 
   return (
     <div>
@@ -24,10 +45,10 @@ export function OwnerRevenue() {
       />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard label="MRR" value={formatCurrency(latest.mrr)} icon={<DollarSign className="h-5 w-5" />} tone="success" delta={12} />
-        <KpiCard label="ARR" value={formatCurrency(latest.arr)} icon={<TrendingUp className="h-5 w-5" />} tone="brand" delta={14} />
-        <KpiCard label="Net revenue retention" value="112%" icon={<Percent className="h-5 w-5" />} tone="purple" delta={3} />
-        <KpiCard label="Churn rate" value="1.8%" icon={<ArrowDownRight className="h-5 w-5" />} tone="danger" delta={-0.4} invertDelta />
+        <KpiCard label="MRR" value={formatCurrency(latest.mrr)} icon={<DollarSign className="h-5 w-5" />} tone="success" delta={mrrGrowthPct ?? undefined} />
+        <KpiCard label="ARR" value={formatCurrency(latest.arr)} icon={<TrendingUp className="h-5 w-5" />} tone="brand" delta={arrGrowthPct ?? undefined} />
+        <KpiCard label="Total MRR (all companies)" value={formatCurrency(totalMrr)} icon={<Percent className="h-5 w-5" />} tone="purple" />
+        <KpiCard label="Churn rate" value={`${churnRate}%`} icon={<ArrowDownRight className="h-5 w-5" />} tone="danger" invertDelta />
       </div>
 
       <div className="mt-5 grid gap-5 lg:grid-cols-3">
@@ -57,28 +78,42 @@ export function OwnerRevenue() {
 
       <div className="mt-5 grid gap-5 lg:grid-cols-2">
         <Card>
-          <CardHeader title="MRR movement" subtitle="New, expansion & churned revenue ($K)" />
+          <CardHeader title="MRR movement" subtitle="Month-over-month change ($)" />
           <CardBody>
-            <BarSeries data={mrrMovement} xKey="month" series={[{ key: 'new', label: 'New', color: '#10b981' }, { key: 'expansion', label: 'Expansion', color: '#567c8d' }, { key: 'churned', label: 'Churned', color: '#f43f5e' }]} height={260} />
+            <BarSeries data={mrrMovement} xKey="month" series={[{ key: 'new', label: 'Growth', color: '#10b981' }, { key: 'churned', label: 'Decline', color: '#f43f5e' }]} height={260} />
           </CardBody>
         </Card>
         <Card>
-          <CardHeader title="Churn & retention" subtitle="Monthly churn vs retention %" />
-          <CardBody>
-            <TrendLine data={churnData} xKey="month" series={[{ key: 'churn', label: 'Churn %', color: '#f43f5e' }, { key: 'retention', label: 'Retention %', color: '#10b981' }]} height={260} />
+          <CardHeader title="Company status" subtitle="Active vs churned companies" />
+          <CardBody className="space-y-4">
+            {[
+              { l: 'Active', v: companies.filter((c) => c.status === 'active').length, tone: 'bg-emerald-500' },
+              { l: 'Trial', v: companies.filter((c) => c.status === 'trial').length, tone: 'bg-brand-500' },
+              { l: 'Past due', v: companies.filter((c) => c.status === 'past-due').length, tone: 'bg-amber-500' },
+              { l: 'Churned', v: companies.filter((c) => c.status === 'churned').length, tone: 'bg-rose-500' },
+            ].map((r) => (
+              <div key={r.l}>
+                <div className="mb-1 flex justify-between text-sm"><span className="text-ink-muted">{r.l}</span><span className="font-medium text-ink">{r.v}</span></div>
+                <div className="h-2 overflow-hidden rounded-full bg-surface-muted">
+                  <div className={`h-full rounded-full ${r.tone}`} style={{ width: companies.length ? `${(r.v / companies.length) * 100}%` : '0%' }} />
+                </div>
+              </div>
+            ))}
           </CardBody>
         </Card>
       </div>
 
-      <Card className="mt-5 border-emerald-200 bg-emerald-50/40 dark:bg-emerald-950/20">
-        <CardBody className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
-          <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-600 text-white"><Users className="h-5 w-5" /></span>
-          <div className="flex-1">
-            <div className="flex items-center gap-2"><p className="text-sm font-semibold text-ink">Healthy growth trajectory</p><Badge tone="success">+14% YoY</Badge></div>
-            <p className="text-sm text-ink-muted">Net revenue retention above 110% indicates strong expansion. Churn is trending down for the 4th consecutive month.</p>
-          </div>
-        </CardBody>
-      </Card>
+      {mrrGrowthPct !== null && mrrGrowthPct > 0 && (
+        <Card className="mt-5 border-emerald-200 bg-emerald-50/40 dark:bg-emerald-950/20">
+          <CardBody className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
+            <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-600 text-white"><Users className="h-5 w-5" /></span>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-ink">Positive MRR growth this month</p>
+              <p className="text-sm text-ink-muted">MRR grew {mrrGrowthPct}% month-over-month from {formatCurrency(prev.mrr)} to {formatCurrency(latest.mrr)}.</p>
+            </div>
+          </CardBody>
+        </Card>
+      )}
     </div>
   )
 }

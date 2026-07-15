@@ -19,7 +19,7 @@ import { Gauge } from '@/components/shared/Gauge'
 import { KpiCard } from '@/components/shared/KpiCard'
 import { TrendArea } from '@/components/shared/Charts'
 import { RiskBadge } from '@/components/shared/Badges'
-import { useFatigueTrend, useAlerts } from '@/lib/api'
+import { useFatigueTrend, useAlerts, useEmployees } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { timeGreeting } from '@/lib/utils'
 
@@ -34,7 +34,17 @@ export function EmployeeDashboard() {
   const { user } = useAuth()
   const { data: fatigueTrend } = useFatigueTrend(user?.id)
   const { data: alerts } = useAlerts()
+  const { data: employees } = useEmployees()
   const myAlerts = alerts.slice(0, 4)
+
+  // Get the current employee's live vitals from the latest trend point
+  const latest = fatigueTrend.length ? fatigueTrend[fatigueTrend.length - 1] : null
+  const me = employees.find((e) => e.id === user?.id)
+  const currentFatigue = me?.fatigue ?? latest?.fatigue ?? 0
+  const currentHeartRate = me?.heartRate ?? latest?.heartRate ?? 0
+  const currentFocus = latest?.focus ?? null
+  const riskLevel = me?.riskLevel ?? 'low'
+  const shiftLabel = me ? `On shift · ${me.shift}` : 'On shift'
 
   return (
     <div>
@@ -43,7 +53,7 @@ export function EmployeeDashboard() {
         description="Here's your wellness snapshot for today."
         actions={
           <>
-            <Badge tone="success" dot>On shift · Morning</Badge>
+            <Badge tone="success" dot>{shiftLabel}</Badge>
             <Link to="/user/monitoring">
               <Button size="sm">
                 <HeartPulse className="h-4 w-4" /> Live monitor
@@ -56,22 +66,22 @@ export function EmployeeDashboard() {
       <div className="grid gap-5 lg:grid-cols-3">
         {/* Gauge */}
         <Card className="lg:col-span-1">
-          <CardHeader title="Fatigue Index" subtitle="Updated 1 min ago" />
+          <CardHeader title="Fatigue Index" subtitle="Live reading" />
           <CardBody className="flex flex-col items-center">
-            <Gauge value={38} label="Current reading" />
+            <Gauge value={currentFatigue} label="Current reading" />
             <div className="mt-4 flex w-full items-center justify-between rounded-xl bg-surface-subtle p-3 text-sm">
               <span className="text-ink-muted">Status</span>
-              <RiskBadge level="low" />
+              <RiskBadge level={riskLevel} />
             </div>
           </CardBody>
         </Card>
 
         {/* Vitals */}
         <div className="grid gap-5 sm:grid-cols-2 lg:col-span-2">
-          <KpiCard label="Heart rate" value="74 bpm" icon={<HeartPulse className="h-5 w-5" />} tone="danger" delta={-3} invertDelta hint="Resting · normal range" />
-          <KpiCard label="Focus score" value="86%" icon={<TrendingUp className="h-5 w-5" />} tone="success" delta={5} hint="Above your weekly avg" />
-          <KpiCard label="Hours on shift" value="5h 12m" icon={<Timer className="h-5 w-5" />} tone="brand" hint="Break due in 48 min" />
-          <KpiCard label="Sleep debt" value="0.5h" icon={<Moon className="h-5 w-5" />} tone="purple" delta={-12} invertDelta hint="Recovered overnight" />
+          <KpiCard label="Heart rate" value={currentHeartRate ? `${currentHeartRate} bpm` : '—'} icon={<HeartPulse className="h-5 w-5" />} tone="danger" hint="Live reading" />
+          <KpiCard label="Focus score" value={currentFocus !== null ? `${currentFocus}%` : '—'} icon={<TrendingUp className="h-5 w-5" />} tone="success" hint="Current session" />
+          <KpiCard label="Active alerts" value={alerts.filter((a) => a.status === 'open').length} icon={<Timer className="h-5 w-5" />} tone="brand" />
+          <KpiCard label="Shift" value={me?.shift ?? '—'} icon={<Moon className="h-5 w-5" />} tone="purple" hint={me?.status ?? ''} />
         </div>
       </div>
 
@@ -130,21 +140,23 @@ export function EmployeeDashboard() {
         </Card>
       </Section>
 
-      {/* Wellness nudges */}
-      <Card className="mt-5 border-brand-200 bg-brand-50/40 dark:bg-brand-950/20">
-        <CardBody className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
-          <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-600 text-white">
-            <Footprints className="h-5 w-5" />
-          </span>
-          <div className="flex-1">
-            <p className="text-sm font-semibold text-ink">Time to move</p>
-            <p className="text-sm text-ink-muted">You've been stationary for 52 minutes. A short stretch can lower your fatigue index.</p>
-          </div>
-          <Link to="/user/breaks">
-            <Button variant="outline" size="sm">Take a micro-break</Button>
-          </Link>
-        </CardBody>
-      </Card>
+      {/* Wellness nudge */}
+      {currentFatigue >= 50 && (
+        <Card className="mt-5 border-brand-200 bg-brand-50/40 dark:bg-brand-950/20">
+          <CardBody className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
+            <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-600 text-white">
+              <Footprints className="h-5 w-5" />
+            </span>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-ink">Fatigue detected</p>
+              <p className="text-sm text-ink-muted">Your fatigue index is elevated. A short break and hydration can help reduce it.</p>
+            </div>
+            <Link to="/user/breaks">
+              <Button variant="outline" size="sm">Take a micro-break</Button>
+            </Link>
+          </CardBody>
+        </Card>
+      )}
     </div>
   )
 }
