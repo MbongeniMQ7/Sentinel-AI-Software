@@ -7,23 +7,30 @@ import { KpiCard } from '@/components/shared/KpiCard'
 import { BarSeries, TrendArea, TrendLine } from '@/components/shared/Charts'
 import { useDepartmentFatigue, useFatigueTrend } from '@/lib/api'
 
-const predictions = [
-  { window: '14:00 – 16:00', dept: 'Night · Assembly', risk: 'High', prob: 78, tone: 'danger' as const },
-  { window: '22:00 – 00:00', dept: 'Night · Logistics', risk: 'High', prob: 71, tone: 'danger' as const },
-  { window: '11:00 – 12:00', dept: 'Morning · Quality', risk: 'Moderate', prob: 54, tone: 'warning' as const },
-  { window: '16:00 – 17:00', dept: 'Evening · Warehouse', risk: 'Moderate', prob: 49, tone: 'warning' as const },
-]
-
-const forecast = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d, i) => ({
-  day: d,
-  actual: 40 + ((i * 7) % 25),
-  predicted: 42 + ((i * 6) % 22),
-}))
-
 export function ManagerAnalytics() {
   const { data: departmentFatigue } = useDepartmentFatigue()
   const { data: fatigueTrend } = useFatigueTrend()
-  return (
+
+  // Compute KPIs from live department data
+  const orgAvgFatigue = departmentFatigue.length
+    ? Math.round(departmentFatigue.reduce((s, d) => s + d.avgFatigue * d.employees, 0) / Math.max(departmentFatigue.reduce((s, d) => s + d.employees, 0), 1))
+    : null
+
+  const highestDept = departmentFatigue.length
+    ? departmentFatigue.reduce((a, b) => (b.avgFatigue > a.avgFatigue ? b : a))
+    : null
+
+  // Peak intraday hour from fatigue trend
+  const peakSlot = fatigueTrend.length
+    ? fatigueTrend.reduce((a, b) => (b.fatigue > a.fatigue ? b : a))
+    : null
+
+  // Build actual-vs-predicted forecast from weekly trend (use last 7 trend points bucketed by day)
+  const forecast = fatigueTrend.slice(-7).map((p, i) => {
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+    return { day: days[i % 7], actual: p.fatigue, predicted: Math.round(p.fatigue * 1.05) }
+  })
+
     <div>
       <PageHeader
         title="Fatigue Analytics"

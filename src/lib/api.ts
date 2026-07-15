@@ -182,10 +182,6 @@ function useQuery<T>(fetcher: () => Promise<T>, fallback: T, deps: unknown[] = [
 // ============================================================================
 
 async function fetchEmployees(): Promise<Employee[]> {
-  if (IS_DEMO_MODE) {
-    return getLocal<Employee[]>('sentinel_mock_employees', defaultEmployees)
-  }
-
   const { data, error } = await supabase
     .from('profiles')
     .select(`
@@ -227,10 +223,6 @@ export function useEmployees() {
 }
 
 async function fetchAlerts(): Promise<AlertItem[]> {
-  if (IS_DEMO_MODE) {
-    return getLocal<AlertItem[]>('sentinel_mock_alerts', defaultAlerts)
-  }
-
   const { data, error } = await supabase
     .from('alerts')
     .select(`
@@ -258,10 +250,6 @@ export function useAlerts() {
 }
 
 async function fetchDevices(): Promise<DeviceItem[]> {
-  if (IS_DEMO_MODE) {
-    return getLocal<DeviceItem[]>('sentinel_mock_devices', defaultDevices)
-  }
-
   const { data, error } = await supabase
     .from('devices')
     .select(`
@@ -288,10 +276,6 @@ export function useDevices() {
 }
 
 async function fetchLeaveRequests(): Promise<LeaveRequest[]> {
-  if (IS_DEMO_MODE) {
-    return getLocal<LeaveRequest[]>('sentinel_mock_leave_requests', defaultLeaveRequests)
-  }
-
   const { data, error } = await supabase
     .from('leave_requests')
     .select(`
@@ -318,10 +302,6 @@ export function useLeaveRequests() {
 }
 
 async function fetchBreakRequests(): Promise<BreakRequest[]> {
-  if (IS_DEMO_MODE) {
-    return getLocal<BreakRequest[]>('sentinel_mock_break_requests', defaultBreakRequests)
-  }
-
   const { data, error } = await supabase
     .from('break_requests')
     .select(`
@@ -347,10 +327,6 @@ export function useBreakRequests() {
 }
 
 async function fetchCompanies(): Promise<Company[]> {
-  if (IS_DEMO_MODE) {
-    return getLocal<Company[]>('sentinel_mock_companies', defaultCompanies)
-  }
-
   const [{ data: companies, error }, { data: profileRows }, { data: deviceRows }] = await Promise.all([
     supabase.from('companies').select(`
       id, name, industry, status, seats, since,
@@ -436,10 +412,6 @@ export function usePlatformUsers() {
 }
 
 async function fetchAuditLogs(): Promise<AuditLog[]> {
-  if (IS_DEMO_MODE) {
-    return getLocal<AuditLog[]>('sentinel_mock_audit_logs', defaultAuditLogs)
-  }
-
   const { data, error } = await supabase
     .from('audit_logs')
     .select(`
@@ -608,10 +580,6 @@ export async function updateTicketStatus(id: string, status: 'open' | 'pending' 
 }
 
 async function fetchFaqs(): Promise<Faq[]> {
-  if (IS_DEMO_MODE) {
-    return getLocal<Faq[]>('sentinel_mock_faqs', defaultFaqs)
-  }
-
   const { data, error } = await supabase
     .from('faqs')
     .select('question, answer')
@@ -626,10 +594,6 @@ export function useFaqs() {
 }
 
 async function fetchFatigueTrend(employeeId?: string): Promise<TrendPoint[]> {
-  if (IS_DEMO_MODE) {
-    return defaultFatigueTrend
-  }
-
   let query = supabase
     .from('fatigue_readings')
     .select('recorded_at, fatigue_score, heart_rate, focus_score')
@@ -674,10 +638,6 @@ export interface WeeklyAlertPoint {
 }
 
 async function fetchWeeklyAlerts(): Promise<WeeklyAlertPoint[]> {
-  if (IS_DEMO_MODE) {
-    return defaultWeeklyAlerts
-  }
-
   const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
   const { data, error } = await supabase
     .from('alerts')
@@ -712,10 +672,6 @@ export interface DepartmentFatiguePoint {
 }
 
 async function fetchDepartmentFatigue(): Promise<DepartmentFatiguePoint[]> {
-  if (IS_DEMO_MODE) {
-    return defaultDepartmentFatigue
-  }
-
   const { data, error } = await supabase
     .from('employee_profiles')
     .select('fatigue_score, departments(name)')
