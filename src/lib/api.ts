@@ -977,7 +977,7 @@ export function useNotificationPreferences(profileId?: string) {
   )
 }
 
-/** Employee opens a support ticket (creates ticket + first message). */
+/** Employee or manager opens a support ticket (creates ticket + first message). */
 export async function submitSupportTicket(input: {
   openedBy: string
   companyId: string | null
@@ -985,6 +985,7 @@ export async function submitSupportTicket(input: {
   category: string
   priority: 'low' | 'medium' | 'high' | 'urgent'
   message: string
+  escalated?: boolean
 }): Promise<void> {
   const number = `TKT-${Date.now().toString().slice(-6)}`
   const { data, error } = await supabase
@@ -996,7 +997,8 @@ export async function submitSupportTicket(input: {
       subject: input.subject,
       category: input.category,
       priority: input.priority,
-      status: 'open',
+      status: input.escalated ? 'in_progress' : 'open',
+      escalated: input.escalated ?? false,
     })
     .select('id')
     .single()
@@ -1015,6 +1017,7 @@ export async function submitSupportTicket(input: {
     subject: input.subject,
     category: input.category,
     priority: input.priority,
+    escalated: input.escalated ?? false,
   })
 }
 
