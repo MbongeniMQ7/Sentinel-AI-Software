@@ -159,11 +159,15 @@ export function EmployeeAlerts() {
             <div>
               <p className="mb-2 text-sm font-medium text-ink">Timeline</p>
               <div className="space-y-3">
-                {['Detected by Camera A-12', 'Operator notified', 'Awaiting acknowledgement'].map((t, i) => (
-                  <div key={t} className="flex items-start gap-3">
-                    <span className={`mt-1 h-2 w-2 rounded-full ${i === 2 ? 'bg-amber-500' : 'bg-emerald-500'}`} />
+                {[
+                  { t: 'Alert detected', done: true },
+                  { t: 'Operator notified', done: selected.status !== 'open' },
+                  { t: selected.status === 'acknowledged' ? 'Acknowledged by you' : selected.status === 'resolved' ? 'Resolved' : 'Awaiting acknowledgement', done: selected.status === 'acknowledged' || selected.status === 'resolved' },
+                ].map((item, i) => (
+                  <div key={i} className="flex items-start gap-3">
+                    <span className={`mt-1 h-2 w-2 rounded-full ${item.done ? 'bg-emerald-500' : 'bg-amber-500'}`} />
                     <div>
-                      <p className="text-sm text-ink">{t}</p>
+                      <p className="text-sm text-ink">{item.t}</p>
                       <p className="text-xs text-ink-subtle">{selected.timestamp}</p>
                     </div>
                   </div>

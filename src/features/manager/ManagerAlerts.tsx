@@ -112,18 +112,22 @@ export function ManagerAlerts() {
             <Card>
               <CardHeader title="Top alert drivers" />
               <CardBody className="space-y-3">
-                {[
-                  { label: 'Sustained fatigue', value: 38, tone: 'bg-amber-500' },
-                  { label: 'Micro-sleep events', value: 24, tone: 'bg-rose-500' },
-                  { label: 'Attention deviation', value: 19, tone: 'bg-violet-500' },
-                  { label: 'PPE compliance', value: 12, tone: 'bg-sky-500' },
-                  { label: 'Zone absence', value: 7, tone: 'bg-emerald-500' },
-                ].map((d) => (
-                  <div key={d.label}>
-                    <div className="mb-1 flex justify-between text-sm"><span className="text-ink-muted">{d.label}</span><span className="font-medium text-ink">{d.value}%</span></div>
-                    <div className="h-2 overflow-hidden rounded-full bg-surface-muted"><div className={`h-full rounded-full ${d.tone}`} style={{ width: `${d.value}%` }} /></div>
-                  </div>
-                ))}
+                {(() => {
+                  const total = alerts.length || 1
+                  const drivers = [
+                    { label: 'Fatigue', value: alerts.filter((a) => a.type === 'fatigue').length, tone: 'bg-amber-500' },
+                    { label: 'Drowsiness', value: alerts.filter((a) => a.type === 'drowsiness').length, tone: 'bg-rose-500' },
+                    { label: 'Distraction', value: alerts.filter((a) => a.type === 'distraction').length, tone: 'bg-violet-500' },
+                    { label: 'Zone absence', value: alerts.filter((a) => a.type === 'absence').length, tone: 'bg-sky-500' },
+                    { label: 'PPE / Helmet', value: alerts.filter((a) => a.type === 'no-helmet').length, tone: 'bg-emerald-500' },
+                  ].filter((d) => d.value > 0).sort((a, b) => b.value - a.value)
+                  return drivers.map((d) => (
+                    <div key={d.label}>
+                      <div className="mb-1 flex justify-between text-sm"><span className="text-ink-muted">{d.label}</span><span className="font-medium text-ink">{Math.round((d.value / total) * 100)}%</span></div>
+                      <div className="h-2 overflow-hidden rounded-full bg-surface-muted"><div className={`h-full rounded-full ${d.tone}`} style={{ width: `${Math.round((d.value / total) * 100)}%` }} /></div>
+                    </div>
+                  ))
+                })()}
               </CardBody>
             </Card>
           </CardBody>
@@ -152,12 +156,20 @@ export function ManagerAlerts() {
             <div>
               <p className="mb-2 text-sm font-medium text-ink">Escalation path</p>
               <div className="space-y-3">
-                {[{ n: 'Operator notified', done: true }, { n: 'Shift supervisor', done: true }, { n: 'Manager review', done: false }, { n: 'Safety officer', done: false }].map((s) => (
-                  <div key={s.n} className="flex items-center gap-3">
-                    <span className={`flex h-6 w-6 items-center justify-center rounded-full ${s.done ? 'bg-emerald-500 text-white' : 'bg-surface-muted text-ink-subtle'}`}>{s.done ? <CheckCircle2 className="h-3.5 w-3.5" /> : '·'}</span>
-                    <span className={`text-sm ${s.done ? 'text-ink' : 'text-ink-muted'}`}>{s.n}</span>
-                  </div>
-                ))}
+                {(() => {
+                  const steps = [
+                    { n: 'Alert triggered', done: true },
+                    { n: 'Operator notified', done: selected.status !== 'open' || true },
+                    { n: 'Manager review', done: selected.status === 'escalated' || selected.status === 'resolved' },
+                    { n: 'Resolved', done: selected.status === 'resolved' },
+                  ]
+                  return steps.map((s) => (
+                    <div key={s.n} className="flex items-center gap-3">
+                      <span className={`flex h-6 w-6 items-center justify-center rounded-full ${s.done ? 'bg-emerald-500 text-white' : 'bg-surface-muted text-ink-subtle'}`}>{s.done ? <CheckCircle2 className="h-3.5 w-3.5" /> : '·'}</span>
+                      <span className={`text-sm ${s.done ? 'text-ink' : 'text-ink-muted'}`}>{s.n}</span>
+                    </div>
+                  ))
+                })()}
               </div>
             </div>
           </div>

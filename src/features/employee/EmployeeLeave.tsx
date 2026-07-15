@@ -23,7 +23,6 @@ const columns: Column<LeaveRequest>[] = [
 ]
 
 const DAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
-const leaveDays = new Set([8, 9, 10, 18, 22, 23])
 
 export function EmployeeLeave() {
   const [open, setOpen] = useState(false)
@@ -35,7 +34,38 @@ export function EmployeeLeave() {
   const [reason, setReason] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const cells = Array.from({ length: 35 }, (_, i) => i - 2) // offset start
+
+  // Calendar state — current month/year
+  const now = new Date()
+  const [calYear, setCalYear] = useState(now.getFullYear())
+  const [calMonth, setCalMonth] = useState(now.getMonth()) // 0-based
+
+  const monthLabel = new Date(calYear, calMonth, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+  const firstDow = new Date(calYear, calMonth, 1).getDay()
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate()
+  const cells = Array.from({ length: 35 }, (_, i) => i - firstDow + 1)
+
+  // Build set of day-numbers in the current calendar month that have approved/pending leave
+  const leaveDays = new Set(
+    leaveRequests
+      .filter((r) => r.status === 'approved' || r.status === 'pending')
+      .flatMap((r) => {
+        const days: number[] = []
+        const start = new Date(r.from)
+        const end = new Date(r.to)
+        const cur = new Date(start)
+        while (cur <= end) {
+          if (cur.getFullYear() === calYear && cur.getMonth() === calMonth) {
+            days.push(cur.getDate())
+          }
+          cur.setDate(cur.getDate() + 1)
+        }
+        return days
+      }),
+  )
+
+  const approvedCount = leaveRequests.filter((l) => l.status === 'approved').length
+  const approvedDays = leaveRequests.filter((l) => l.status === 'approved').reduce((s, l) => s + l.days, 0)
 
   const reset = () => {
     setType('Annual')
@@ -88,20 +118,28 @@ export function EmployeeLeave() {
       />
 
       <div className="mb-5 grid gap-4 sm:grid-cols-4">
-        <KpiCard label="Annual balance" value="14d" icon={<CalendarDays className="h-5 w-5" />} tone="brand" hint="of 21 days" />
-        <KpiCard label="Sick leave" value="7d" icon={<CalendarDays className="h-5 w-5" />} tone="info" hint="remaining" />
+        <KpiCard label="Total leave days" value={`${leaveRequests.reduce((s, l) => s + l.days, 0)}d`} icon={<CalendarDays className="h-5 w-5" />} tone="brand" hint="submitted" />
+        <KpiCard label="Approved days" value={`${approvedDays}d`} icon={<CalendarDays className="h-5 w-5" />} tone="info" />
         <KpiCard label="Pending" value={leaveRequests.filter((l) => l.status === 'pending').length} icon={<CalendarDays className="h-5 w-5" />} tone="warning" />
-        <KpiCard label="Approved YTD" value="6" icon={<CalendarDays className="h-5 w-5" />} tone="success" />
+        <KpiCard label="Approved requests" value={approvedCount} icon={<CalendarDays className="h-5 w-5" />} tone="success" />
       </div>
 
       <div className="grid gap-5 lg:grid-cols-3">
         <Card className="lg:col-span-1">
           <CardHeader
-            title="July 2026"
+            title={monthLabel}
             action={
               <div className="flex gap-1">
-                <Button variant="ghost" size="icon"><ChevronLeft className="h-4 w-4" /></Button>
-                <Button variant="ghost" size="icon"><ChevronRight className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="icon" onClick={() => {
+                  const d = new Date(calYear, calMonth - 1, 1)
+                  setCalYear(d.getFullYear())
+                  setCalMonth(d.getMonth())
+                }}><ChevronLeft className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="icon" onClick={() => {
+                  const d = new Date(calYear, calMonth + 1, 1)
+                  setCalYear(d.getFullYear())
+                  setCalMonth(d.getMonth())
+                }}><ChevronRight className="h-4 w-4" /></Button>
               </div>
             }
           />
@@ -111,7 +149,7 @@ export function EmployeeLeave() {
                 <div key={d} className="py-1 text-xs font-medium text-ink-subtle">{d}</div>
               ))}
               {cells.map((day, i) => {
-                const valid = day >= 1 && day <= 31
+                const valid = day >= 1 && day <= daysInMonth
                 const isLeave = valid && leaveDays.has(day)
                 return (
                   <div
