@@ -446,16 +446,19 @@ export interface Ticket {
   escalated: boolean
   company: string
   openedBy: string
+  openedById: string
   created: string
+  replies: TicketReply[]
 }
 
 async function fetchTickets(): Promise<Ticket[]> {
   const { data, error } = await supabase
     .from('support_tickets')
     .select(`
-      id, number, subject, category, priority, status, escalated, created_at,
+      id, number, subject, category, priority, status, escalated, created_at, opened_by,
       companies(name),
-      profiles!support_tickets_opened_by_fkey(full_name)
+      profiles!support_tickets_opened_by_fkey(full_name),
+      ticket_messages(id, body, author_id, created_at, profiles(full_name))
     `)
     .order('created_at', { ascending: false })
     .limit(100)
@@ -471,7 +474,18 @@ async function fetchTickets(): Promise<Ticket[]> {
     escalated: row.escalated ?? false,
     company: row.companies?.name ?? '—',
     openedBy: row.profiles?.full_name ?? 'Unknown',
+    openedById: row.opened_by ?? '',
     created: relativeTime(row.created_at),
+    replies: (row.ticket_messages ?? [])
+      .slice()
+      .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+      .map((m: any) => ({
+        id: String(m.id),
+        body: m.body ?? '',
+        author: m.profiles?.full_name ?? 'Support',
+        mine: false, // filled in per-user context where needed
+        created: relativeTime(m.created_at),
+      })),
   }))
 }
 
@@ -1019,6 +1033,22 @@ export async function submitSupportTicket(input: {
     priority: input.priority,
     escalated: input.escalated ?? false,
   })
+}
+
+/** Owner or manager posts a reply message on an existing ticket. */
+export async function replyToTicket(ticketId: string, authorId: string, body: string): Promise<void> {
+  const { error } = await supabase.from('ticket_messages').insert({
+    ticket_id: ticketId,
+    author_id: authorId,
+    body,
+  })
+  unwrap(error)
+  // Bump status to in_progress if it was open
+  await supabase
+    .from('support_tickets')
+    .update({ status: 'in_progress' })
+    .eq('id', ticketId)
+    .eq('status', 'open')
 }
 
 /** Manager/owner adds a device to the fleet. */
