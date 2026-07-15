@@ -59,19 +59,19 @@ export function OwnerRevenue() {
           </CardBody>
         </Card>
         <Card>
-          <CardHeader title="Revenue breakdown" />
+          <CardHeader title="MRR by plan" subtitle="Distribution across subscription tiers" />
           <CardBody className="space-y-4">
-            {[
-              { l: 'Subscriptions', v: 86, tone: 'bg-emerald-500' },
-              { l: 'Device leasing', v: 9, tone: 'bg-brand-500' },
-              { l: 'Professional services', v: 3, tone: 'bg-violet-500' },
-              { l: 'Add-ons', v: 2, tone: 'bg-amber-500' },
-            ].map((r) => (
-              <div key={r.l}>
-                <div className="mb-1 flex justify-between text-sm"><span className="text-ink-muted">{r.l}</span><span className="font-medium text-ink">{r.v}%</span></div>
-                <div className="h-2 overflow-hidden rounded-full bg-surface-muted"><div className={`h-full rounded-full ${r.tone}`} style={{ width: `${r.v}%` }} /></div>
-              </div>
-            ))}
+            {(['Enterprise', 'Growth', 'Starter'] as const).map((plan) => {
+              const planMrr = companies.filter((c) => c.plan === plan).reduce((s, c) => s + c.mrr, 0)
+              const pct = totalMrr ? Math.round((planMrr / totalMrr) * 100) : 0
+              const toneMap = { Enterprise: 'bg-emerald-500', Growth: 'bg-brand-500', Starter: 'bg-violet-500' } as const
+              return (
+                <div key={plan}>
+                  <div className="mb-1 flex justify-between text-sm"><span className="text-ink-muted">{plan}</span><span className="font-medium text-ink">{pct}%</span></div>
+                  <div className="h-2 overflow-hidden rounded-full bg-surface-muted"><div className={`h-full rounded-full ${toneMap[plan]}`} style={{ width: `${pct}%` }} /></div>
+                </div>
+              )
+            })}
           </CardBody>
         </Card>
       </div>
