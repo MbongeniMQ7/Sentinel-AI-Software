@@ -101,30 +101,7 @@ export interface Faq {
   a: string
 }
 
-// ============================================================================
-// Robust Offline/Simulation Mock Datastore Fallbacks
-// ============================================================================
 
-export const IS_DEMO_MODE = !import.meta.env.VITE_SUPABASE_URL || 
-  import.meta.env.VITE_SUPABASE_URL.includes('placeholder') || 
-  import.meta.env.VITE_SUPABASE_URL.includes('mock')
-
-export function getLocal<T>(key: string, initial: T): T {
-  const existing = localStorage.getItem(key)
-  if (existing) {
-    try {
-      return JSON.parse(existing)
-    } catch {
-      return initial
-    }
-  }
-  localStorage.setItem(key, JSON.stringify(initial))
-  return initial
-}
-
-export function setLocal<T>(key: string, value: T) {
-  localStorage.setItem(key, JSON.stringify(value))
-}
 
 const defaultEmployees: Employee[] = [
   {
