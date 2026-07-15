@@ -26,7 +26,7 @@ export function ManagerOnboarding() {
   // Personal details
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
-  const [jobTitle, setJobTitle] = useState('Line Operator')
+  const [jobTitle, setJobTitle] = useState('')
   const [phone, setPhone] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)

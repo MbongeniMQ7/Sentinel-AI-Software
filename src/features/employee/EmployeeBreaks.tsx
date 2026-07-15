@@ -25,7 +25,7 @@ export function EmployeeBreaks() {
   const [seconds, setSeconds] = useState(15 * 60)
   const { user } = useAuth()
   const { data: breakRequests, refetch } = useBreakRequests()
-  const [reason, setReason] = useState('Fatigue recovery')
+  const [reason, setReason] = useState('')
   const [duration, setDuration] = useState('15')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)

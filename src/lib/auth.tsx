@@ -69,13 +69,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
-    const mockUserStr = localStorage.getItem('sentinel_mock_user')
-    if (mockUserStr) {
-      setUser(JSON.parse(mockUserStr))
-      setLoading(false)
-      return
-    }
-
     supabase.auth.getSession().then(({ data }) => applySession(data.session))
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       applySession(session)
@@ -84,18 +77,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const refresh = async () => {
-    const mockUserStr = localStorage.getItem('sentinel_mock_user')
-    if (mockUserStr) {
-      setUser(JSON.parse(mockUserStr))
-      return
-    }
-
     const { data } = await supabase.auth.getSession()
     await applySession(data.session)
   }
 
   const logout = async () => {
-    localStorage.removeItem('sentinel_mock_user')
     await supabase.auth.signOut()
     setUser(null)
     setPendingEmail(null)
