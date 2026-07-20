@@ -7,6 +7,7 @@ import {
   HeartPulse,
   RefreshCw,
   ShieldCheck,
+  Thermometer,
   Watch,
   Wifi,
   WifiOff,
@@ -20,13 +21,14 @@ import { EmptyState } from '@/components/shared/States'
 import { RiskBadge } from '@/components/shared/Badges'
 import { TrendLine } from '@/components/shared/Charts'
 import { useAuth } from '@/lib/auth'
-import { useEmployees, useDevices, useFatigueTrend } from '@/lib/api'
+import { useEmployees, useDevices, useFatigueTrend, useDeviceMetrics } from '@/lib/api'
 
 export function EmployeeMonitoring() {
   const { user } = useAuth()
   const { data: employees, refetch: refetchEmployees } = useEmployees()
   const { data: devices, refetch: refetchDevices } = useDevices()
   const { data: trend, refetch: refetchTrend } = useFatigueTrend(user?.id)
+  const { data: liveMetrics, refetch: refetchMetrics } = useDeviceMetrics()
 
   const me = useMemo(() => employees.find((e) => e.id === user?.id), [employees, user?.id])
   const band = useMemo(
@@ -37,13 +39,18 @@ export function EmployeeMonitoring() {
     [devices, user?.name, me?.name],
   )
 
-  // Poll for fresh wristband readings every 15s (real data, no simulation).
+  // Live physical wristband reading (first reporting device on the endpoint).
+  const live = useMemo(() => liveMetrics[0], [liveMetrics])
+  const calibrating = live?.status === 'CALIBRATING'
+
+  // Poll for fresh wristband readings every 5s (real data, no simulation).
   useEffect(() => {
     const id = setInterval(() => {
       refetchEmployees()
       refetchDevices()
       refetchTrend()
-    }, 15000)
+      refetchMetrics()
+    }, 5000)
     return () => clearInterval(id)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id])
@@ -52,11 +59,14 @@ export function EmployeeMonitoring() {
     refetchEmployees()
     refetchDevices()
     refetchTrend()
+    refetchMetrics()
   }
 
-  const online = band?.status === 'online'
+  const deviceConnected = !!live
+  const online = deviceConnected || band?.status === 'online'
   const fatigue = me?.fatigue ?? 0
-  const heartRate = me?.heartRate ?? 0
+  // Prefer the live wristband BPM when the physical device is streaming.
+  const heartRate = live?.bpm ? Math.round(live.bpm) : me?.heartRate ?? 0
   const fatigueTone = fatigue >= 70 ? 'danger' : fatigue >= 40 ? 'warning' : 'success'
 
   return (
@@ -140,15 +150,30 @@ export function EmployeeMonitoring() {
                 <CardBody className="space-y-1">
                   <span className="flex items-center gap-2 text-xs text-ink-muted"><HeartPulse className="h-4 w-4 text-rose-500" /> Heart rate</span>
                   <p className="text-3xl font-bold text-ink">{heartRate || '—'}<span className="ml-1 text-sm font-normal text-ink-subtle">bpm</span></p>
+                  {deviceConnected && <p className="text-xs text-emerald-600">Live from device</p>}
                 </CardBody>
               </Card>
-              <Card>
-                <CardBody className="space-y-1">
-                  <span className="flex items-center gap-2 text-xs text-ink-muted"><GaugeIcon className="h-4 w-4 text-amber-500" /> Fatigue index</span>
-                  <p className="text-3xl font-bold text-ink">{fatigue}</p>
-                  <Progress value={fatigue} tone={fatigueTone} />
-                </CardBody>
-              </Card>
+              {deviceConnected ? (
+                <Card>
+                  <CardBody className="space-y-1">
+                    <span className="flex items-center gap-2 text-xs text-ink-muted"><Thermometer className="h-4 w-4 text-orange-500" /> Skin temp</span>
+                    <p className="text-3xl font-bold text-ink">{live.temp ? live.temp.toFixed(1) : '—'}<span className="ml-1 text-sm font-normal text-ink-subtle">°C</span></p>
+                    {calibrating ? (
+                      <p className="text-xs text-amber-600">Calibrating · {live.calibration}s left</p>
+                    ) : (
+                      <p className="text-xs text-ink-subtle">Wellness score: {live.score.toFixed(1)}</p>
+                    )}
+                  </CardBody>
+                </Card>
+              ) : (
+                <Card>
+                  <CardBody className="space-y-1">
+                    <span className="flex items-center gap-2 text-xs text-ink-muted"><GaugeIcon className="h-4 w-4 text-amber-500" /> Fatigue index</span>
+                    <p className="text-3xl font-bold text-ink">{fatigue}</p>
+                    <Progress value={fatigue} tone={fatigueTone} />
+                  </CardBody>
+                </Card>
+              )}
               <Card>
                 <CardBody className="space-y-1">
                   <span className="flex items-center gap-2 text-xs text-ink-muted"><ShieldCheck className="h-4 w-4 text-brand-600" /> Risk level</span>

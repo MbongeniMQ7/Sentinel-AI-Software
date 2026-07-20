@@ -37,8 +37,9 @@ export async function requestOtp(email: string): Promise<void> {
 }
 
 /**
- * Verify an OTP code. On success the returned token_hash is exchanged for a
- * real Supabase session so RLS-protected queries run as this user.
+ * Verify an OTP code. On success the edge function returns real Supabase
+ * session tokens which are applied locally so RLS-protected queries run as
+ * this user.
  */
 export async function verifyOtp(email: string, code: string): Promise<{ role: string }> {
   if (IS_DEMO) {
@@ -72,9 +73,9 @@ export async function verifyOtp(email: string, code: string): Promise<{ role: st
   const data = await res.json().catch(() => ({}))
   if (!res.ok) throw new Error(data.error ?? 'Could not verify the code')
 
-  const { error } = await supabase.auth.verifyOtp({
-    token_hash: data.token_hash,
-    type: 'magiclink',
+  const { error } = await supabase.auth.setSession({
+    access_token: data.access_token,
+    refresh_token: data.refresh_token,
   })
   if (error) throw new Error('Could not establish your session')
 

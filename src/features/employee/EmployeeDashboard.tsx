@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { useEffect, useMemo } from 'react'
 import {
   AlertTriangle,
   ArrowRight,
@@ -8,6 +9,7 @@ import {
   Footprints,
   HeartPulse,
   Moon,
+  Thermometer,
   Timer,
   TrendingUp,
 } from 'lucide-react'
@@ -19,7 +21,7 @@ import { Gauge } from '@/components/shared/Gauge'
 import { KpiCard } from '@/components/shared/KpiCard'
 import { TrendArea } from '@/components/shared/Charts'
 import { RiskBadge } from '@/components/shared/Badges'
-import { useFatigueTrend, useAlerts } from '@/lib/api'
+import { useFatigueTrend, useAlerts, useDeviceMetrics } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { timeGreeting } from '@/lib/utils'
 
@@ -34,7 +36,20 @@ export function EmployeeDashboard() {
   const { user } = useAuth()
   const { data: fatigueTrend } = useFatigueTrend(user?.id)
   const { data: alerts } = useAlerts()
+  const { data: liveMetrics, refetch: refetchMetrics } = useDeviceMetrics()
   const myAlerts = alerts.slice(0, 4)
+
+  // Live physical wristband reading (first reporting device on the endpoint).
+  const live = useMemo(() => liveMetrics[0], [liveMetrics])
+  const deviceConnected = !!live
+  const calibrating = live?.status === 'CALIBRATING'
+
+  // Poll the physical device every 5s for fresh readings.
+  useEffect(() => {
+    const id = setInterval(() => refetchMetrics(), 5000)
+    return () => clearInterval(id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return (
     <div>
@@ -43,7 +58,9 @@ export function EmployeeDashboard() {
         description="Here's your wellness snapshot for today."
         actions={
           <>
-            <Badge tone="success" dot>On shift · Morning</Badge>
+            <Badge tone={deviceConnected ? 'success' : 'neutral'} dot>
+              {deviceConnected ? (calibrating ? 'Device calibrating' : 'Device connected') : 'On shift · Morning'}
+            </Badge>
             <Link to="/user/monitoring">
               <Button size="sm">
                 <HeartPulse className="h-4 w-4" /> Live monitor
@@ -56,9 +73,9 @@ export function EmployeeDashboard() {
       <div className="grid gap-5 lg:grid-cols-3">
         {/* Gauge */}
         <Card className="lg:col-span-1">
-          <CardHeader title="Fatigue Index" subtitle="Updated 1 min ago" />
+          <CardHeader title="Fatigue Index" subtitle={deviceConnected ? 'Live from wristband' : 'Updated 1 min ago'} />
           <CardBody className="flex flex-col items-center">
-            <Gauge value={38} label="Current reading" />
+            <Gauge value={deviceConnected && !calibrating ? Math.round(live.score) : 38} label={deviceConnected ? (calibrating ? `Calibrating · ${live.calibration}s` : 'Wellness score') : 'Current reading'} />
             <div className="mt-4 flex w-full items-center justify-between rounded-xl bg-surface-subtle p-3 text-sm">
               <span className="text-ink-muted">Status</span>
               <RiskBadge level="low" />
@@ -68,8 +85,12 @@ export function EmployeeDashboard() {
 
         {/* Vitals */}
         <div className="grid gap-5 sm:grid-cols-2 lg:col-span-2">
-          <KpiCard label="Heart rate" value="74 bpm" icon={<HeartPulse className="h-5 w-5" />} tone="danger" delta={-3} invertDelta hint="Resting · normal range" />
-          <KpiCard label="Focus score" value="86%" icon={<TrendingUp className="h-5 w-5" />} tone="success" delta={5} hint="Above your weekly avg" />
+          <KpiCard label="Heart rate" value={deviceConnected && live.bpm ? `${Math.round(live.bpm)} bpm` : '74 bpm'} icon={<HeartPulse className="h-5 w-5" />} tone="danger" hint={deviceConnected ? 'Live from device' : 'Resting · normal range'} />
+          {deviceConnected ? (
+            <KpiCard label="Skin temp" value={live.temp ? `${live.temp.toFixed(1)} °C` : '—'} icon={<Thermometer className="h-5 w-5" />} tone="brand" hint={calibrating ? `Calibrating · ${live.calibration}s left` : 'Live from device'} />
+          ) : (
+            <KpiCard label="Focus score" value="86%" icon={<TrendingUp className="h-5 w-5" />} tone="success" delta={5} hint="Above your weekly avg" />
+          )}
           <KpiCard label="Hours on shift" value="5h 12m" icon={<Timer className="h-5 w-5" />} tone="brand" hint="Break due in 48 min" />
           <KpiCard label="Sleep debt" value="0.5h" icon={<Moon className="h-5 w-5" />} tone="purple" delta={-12} invertDelta hint="Recovered overnight" />
         </div>

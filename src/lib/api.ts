@@ -53,6 +53,18 @@ export interface DeviceItem {
   lastSeen: string
 }
 
+/** Live reading streamed from a physical SentinelAI wristband endpoint. */
+export interface DeviceMetrics {
+  deviceId: string
+  status: string
+  score: number
+  bpm: number
+  temp: number
+  calibration: number
+  beatsCollected: number
+  updatedAt: number
+}
+
 export interface LeaveRequest {
   id: string
   employee: string
@@ -632,6 +644,41 @@ async function fetchDevices(): Promise<DeviceItem[]> {
 
 export function useDevices() {
   return useQuery<DeviceItem[]>(fetchDevices, [])
+}
+
+// ----------------------------------------------------------------------------
+// Live physical device readings (SentinelAI wristband endpoint)
+// ----------------------------------------------------------------------------
+
+const DEVICE_API_URL =
+  import.meta.env.VITE_DEVICE_API_URL ||
+  'https://conflicts-availability-worth-patents.trycloudflare.com/dashboard'
+const DEVICE_API_KEY = import.meta.env.VITE_DEVICE_API_KEY || 'sentinel2024'
+
+async function fetchDeviceMetrics(): Promise<DeviceMetrics[]> {
+  const res = await fetch(DEVICE_API_URL, {
+    headers: {
+      Authorization: `Bearer ${DEVICE_API_KEY}`,
+      'X-API-Key': DEVICE_API_KEY,
+    },
+  })
+  if (!res.ok) throw new Error(`Device API ${res.status}`)
+  const payload = (await res.json()) as Record<string, any>
+
+  return Object.entries(payload ?? {}).map(([deviceId, d]) => ({
+    deviceId,
+    status: d?.status ?? d?.raw_data?.state ?? 'UNKNOWN',
+    score: Number(d?.score ?? 0),
+    bpm: Number(d?.bpm ?? 0),
+    temp: Number(d?.temp ?? d?.raw_data?.temp_c ?? 0),
+    calibration: Number(d?.calibration ?? d?.raw_data?.remaining_sec ?? 0),
+    beatsCollected: Number(d?.raw_data?.beats_collected ?? 0),
+    updatedAt: Number(d?.updated_at ?? d?.raw_data?.timestamp ?? 0),
+  }))
+}
+
+export function useDeviceMetrics() {
+  return useQuery<DeviceMetrics[]>(fetchDeviceMetrics, [])
 }
 
 async function fetchLeaveRequests(): Promise<LeaveRequest[]> {

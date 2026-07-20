@@ -126,6 +126,27 @@ Deno.serve(async (req: Request) => {
     return jsonResponse({ error: 'Could not establish a session' }, 500)
   }
 
+  // Exchange the freshly generated hashed_token for a real session server-side.
+  // Doing this here (instead of on the client) avoids clock-skew / token-expiry
+  // races that surface as "Could not establish your session" in the browser.
+  const verifyRes = await fetch(`${Deno.env.get('SUPABASE_URL')}/auth/v1/verify`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+    },
+    body: JSON.stringify({
+      type: 'magiclink',
+      token_hash: linkData.properties.hashed_token,
+    }),
+  })
+  const session = await verifyRes.json().catch(() => ({}))
+
+  if (!verifyRes.ok || !session?.access_token || !session?.refresh_token) {
+    console.error('session exchange error', session)
+    return jsonResponse({ error: 'Could not establish a session' }, 500)
+  }
+
   const userId = linkData.user.id
 
   // Role / company come from the account_roles mapping (defaults to employee).
@@ -170,6 +191,7 @@ Deno.serve(async (req: Request) => {
     success: true,
     email,
     role,
-    token_hash: linkData.properties.hashed_token,
+    access_token: session.access_token,
+    refresh_token: session.refresh_token,
   })
 })
