@@ -1,39 +1,16 @@
-import { Network, Plus, Users } from 'lucide-react'
+import { Network, Users } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Card, CardBody } from '@/components/ui/Card'
-import { Button } from '@/components/ui/Button'
 import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'
+import { EmptyState } from '@/components/shared/States'
+import { usePlatformUsers } from '@/lib/api'
 
 interface Node {
   name: string
   title: string
   reports?: Node[]
   count?: number
-}
-
-const tree: Node = {
-  name: 'Jordan Vale',
-  title: 'VP Operations',
-  reports: [
-    {
-      name: 'Priya Nair',
-      title: 'Shift Manager · Operations',
-      count: 12,
-      reports: [
-        { name: 'Marcus Cole', title: 'Team Lead · Assembly', count: 6 },
-        { name: 'Lena Frost', title: 'Team Lead · Quality', count: 5 },
-      ],
-    },
-    {
-      name: 'Omar Hadid',
-      title: 'Shift Manager · Logistics',
-      count: 9,
-      reports: [
-        { name: 'Sofia Reyes', title: 'Team Lead · Warehouse', count: 7 },
-      ],
-    },
-  ],
 }
 
 function OrgNode({ node, root }: { node: Node; root?: boolean }) {
@@ -62,19 +39,37 @@ function OrgNode({ node, root }: { node: Node; root?: boolean }) {
 }
 
 export function ManagerHierarchy() {
+  const { data: users } = usePlatformUsers()
+  const owners = users.filter((u) => u.role === 'owner')
+  const managers = users.filter((u) => u.role === 'manager')
+  const employees = users.filter((u) => u.role === 'employee')
+  const companies = Array.from(new Set(users.map((u) => u.company).filter((c) => c && c !== '—')))
+
+  const tree: Node | null = users.length === 0
+    ? null
+    : {
+        name: 'Organization',
+        title: `${users.length} people`,
+        reports: companies.map((c) => ({
+          name: c,
+          title: 'Company',
+          count: employees.filter((e) => e.company === c).length,
+          reports: managers.filter((m) => m.company === c).map((m) => ({ name: m.name, title: m.roleLabel })),
+        })),
+      }
+
   return (
     <div>
       <PageHeader
         title="Hierarchy"
         description="Manage your reporting structure and management chain."
-        actions={<Button size="sm"><Plus className="h-4 w-4" /> Add manager</Button>}
       />
 
       <div className="mb-5 grid gap-4 sm:grid-cols-3">
         {[
-          { l: 'Total managers', v: '4', icon: Network },
-          { l: 'Team leads', v: '4', icon: Users },
-          { l: 'Direct reports', v: '28', icon: Users },
+          { l: 'Managers', v: managers.length, icon: Network },
+          { l: 'Owners', v: owners.length, icon: Users },
+          { l: 'Employees', v: employees.length, icon: Users },
         ].map((s) => (
           <Card key={s.l} className="flex items-center gap-4 p-5">
             <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-950/40"><s.icon className="h-5 w-5" /></span>
@@ -85,9 +80,13 @@ export function ManagerHierarchy() {
 
       <Card>
         <CardBody className="overflow-x-auto py-8">
-          <div className="flex min-w-max justify-center px-4">
-            <OrgNode node={tree} root />
-          </div>
+          {tree ? (
+            <div className="flex min-w-max justify-center px-4">
+              <OrgNode node={tree} root />
+            </div>
+          ) : (
+            <EmptyState icon={<Network className="h-6 w-6" />} title="No team members yet" description="Your reporting structure appears here once users are added to your organization." />
+          )}
         </CardBody>
       </Card>
     </div>

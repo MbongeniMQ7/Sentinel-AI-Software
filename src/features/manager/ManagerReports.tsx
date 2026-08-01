@@ -1,10 +1,15 @@
 import { PageHeader } from '@/components/shared/PageHeader'
 import { ReportsBuilder } from '@/components/shared/ReportsBuilder'
 import { BarSeries } from '@/components/shared/Charts'
-import { useDepartmentFatigue } from '@/lib/api'
+import { useAlerts, useDepartmentFatigue, useEmployees } from '@/lib/api'
 
 export function ManagerReports() {
   const { data: departmentFatigue } = useDepartmentFatigue()
+  const { data: employees } = useEmployees()
+  const { data: alerts } = useAlerts()
+  const avgFatigue = employees.length
+    ? Math.round(employees.reduce((s, e) => s + e.fatigue, 0) / employees.length)
+    : 0
   return (
     <div>
       <PageHeader title="Reports" description="Generate team performance and compliance reports." />
@@ -18,10 +23,9 @@ export function ManagerReports() {
         previewTitle="Team Wellness Report"
         previewSubtitle="Operations · Jun 1–30, 2026"
         kpis={[
-          { label: 'Team size', value: '28' },
-          { label: 'Avg fatigue', value: '42' },
-          { label: 'Alerts', value: '24' },
-          { label: 'Compliance', value: '96%' },
+          { label: 'Team size', value: String(employees.length) },
+          { label: 'Avg fatigue', value: String(avgFatigue) },
+          { label: 'Alerts', value: String(alerts.length) },
         ]}
         chart={
           <>

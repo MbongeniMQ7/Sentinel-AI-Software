@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { CalendarDays, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Card, CardHeader, CardBody } from '@/components/ui/Card'
@@ -23,7 +23,6 @@ const columns: Column<LeaveRequest>[] = [
 ]
 
 const DAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
-const leaveDays = new Set([8, 9, 10, 18, 22, 23])
 
 export function EmployeeLeave() {
   const [open, setOpen] = useState(false)
@@ -35,7 +34,26 @@ export function EmployeeLeave() {
   const [reason, setReason] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const cells = Array.from({ length: 35 }, (_, i) => i - 2) // offset start
+
+  const now = new Date()
+  const calYear = now.getFullYear()
+  const calMonth = now.getMonth()
+  const monthLabel = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+  const firstWeekday = new Date(calYear, calMonth, 1).getDay()
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate()
+  const cells = Array.from({ length: 42 }, (_, i) => i - firstWeekday + 1)
+  const leaveDays = useMemo(() => {
+    const set = new Set<number>()
+    for (const r of leaveRequests) {
+      const start = new Date(r.from)
+      const end = new Date(r.to)
+      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) continue
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        if (d.getFullYear() === calYear && d.getMonth() === calMonth) set.add(d.getDate())
+      }
+    }
+    return set
+  }, [leaveRequests, calYear, calMonth])
 
   const reset = () => {
     setType('Annual')
@@ -88,16 +106,16 @@ export function EmployeeLeave() {
       />
 
       <div className="mb-5 grid gap-4 sm:grid-cols-4">
-        <KpiCard label="Annual balance" value="14d" icon={<CalendarDays className="h-5 w-5" />} tone="brand" hint="of 21 days" />
-        <KpiCard label="Sick leave" value="7d" icon={<CalendarDays className="h-5 w-5" />} tone="info" hint="remaining" />
+        <KpiCard label="Total requests" value={leaveRequests.length} icon={<CalendarDays className="h-5 w-5" />} tone="brand" />
         <KpiCard label="Pending" value={leaveRequests.filter((l) => l.status === 'pending').length} icon={<CalendarDays className="h-5 w-5" />} tone="warning" />
-        <KpiCard label="Approved YTD" value="6" icon={<CalendarDays className="h-5 w-5" />} tone="success" />
+        <KpiCard label="Approved" value={leaveRequests.filter((l) => l.status === 'approved').length} icon={<CalendarDays className="h-5 w-5" />} tone="success" />
+        <KpiCard label="Days approved" value={`${leaveRequests.filter((l) => l.status === 'approved').reduce((s, l) => s + (l.days || 0), 0)}d`} icon={<CalendarDays className="h-5 w-5" />} tone="info" />
       </div>
 
       <div className="grid gap-5 lg:grid-cols-3">
         <Card className="lg:col-span-1">
           <CardHeader
-            title="July 2026"
+            title={monthLabel}
             action={
               <div className="flex gap-1">
                 <Button variant="ghost" size="icon"><ChevronLeft className="h-4 w-4" /></Button>
@@ -111,7 +129,7 @@ export function EmployeeLeave() {
                 <div key={d} className="py-1 text-xs font-medium text-ink-subtle">{d}</div>
               ))}
               {cells.map((day, i) => {
-                const valid = day >= 1 && day <= 31
+                const valid = day >= 1 && day <= daysInMonth
                 const isLeave = valid && leaveDays.has(day)
                 return (
                   <div

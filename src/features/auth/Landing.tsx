@@ -524,9 +524,9 @@ export function Landing() {
             <ShieldCheck className="h-4 w-4 text-[#567C8D]" /> © 2026 SentinelAI. All rights reserved.
           </div>
           <div className="flex gap-6 text-[#567C8D] font-bold">
-            <a href="#" className="hover:text-palette-navy transition-colors">Privacy Policy</a>
-            <a href="#" className="hover:text-palette-navy transition-colors">Information Shield Security</a>
-            <a href="#" className="hover:text-palette-navy transition-colors">OSHA SOP Guidelines</a>
+            <a href="/legal/SentinelAI-Privacy-Policy.pdf" download className="hover:text-palette-navy transition-colors">Privacy Policy</a>
+            <a href="/legal/SentinelAI-Terms-and-Conditions.pdf" download className="hover:text-palette-navy transition-colors">Terms &amp; Conditions</a>
+            <a href="https://sentinelai-software.co.za/security" target="_blank" rel="noreferrer" className="hover:text-palette-navy transition-colors">Security</a>
           </div>
         </div>
       </footer>

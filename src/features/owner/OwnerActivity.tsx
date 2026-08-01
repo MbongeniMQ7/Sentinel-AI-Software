@@ -6,7 +6,7 @@ import { Input, Select } from '@/components/ui/Input'
 import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'
 import { EmptyState } from '@/components/shared/States'
-import { useAuditLogs, useCompanies } from '@/lib/api'
+import { useAuditLogs } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
 type ActivityKind = 'company' | 'user' | 'device' | 'billing' | 'security' | 'system'
@@ -20,29 +20,32 @@ const kinds: Record<ActivityKind, { icon: typeof Activity; tone: string }> = {
   system: { icon: Settings, tone: 'bg-surface-muted text-ink-muted' },
 }
 
+function kindFor(text: string): ActivityKind {
+  const a = text.toLowerCase()
+  if (/(login|logout|security|password|suspend|access|policy)/.test(a)) return 'security'
+  if (/(device|sensor|fleet)/.test(a)) return 'device'
+  if (/(payment|invoice|billing|plan|subscription)/.test(a)) return 'billing'
+  if (/(company|account|organization|organisation)/.test(a)) return 'company'
+  if (/(user|invite|role|member|employee|manager)/.test(a)) return 'user'
+  return 'system'
+}
+
 export function OwnerActivity() {
   const [query, setQuery] = useState('')
   const [kind, setKind] = useState('all')
   const { data: auditLogs } = useAuditLogs()
-  const { data: companies } = useCompanies()
 
   const events = useMemo(
     () =>
-      auditLogs.map((l, i) => {
-        const kindList: ActivityKind[] = ['company', 'user', 'device', 'billing', 'security', 'system']
-        const k = kindList[i % kindList.length]
-        const company = companies.length ? companies[i % companies.length].name : '—'
-        const messages: Record<ActivityKind, string> = {
-          company: `New company onboarded: ${company}`,
-          user: `${l.actor} ${l.action}`,
-          device: `Device fleet update at ${company}`,
-          billing: `Payment received from ${company}`,
-          security: `Security policy changed by ${l.actor}`,
-          system: `System ${l.action}`,
-        }
-        return { id: l.id, kind: k, message: messages[k], company, time: l.timestamp, ip: l.ip }
-      }),
-    [auditLogs, companies],
+      auditLogs.map((l) => ({
+        id: l.id,
+        kind: kindFor(`${l.action} ${l.target}`),
+        message: `${l.actor} ${l.action}`,
+        detail: l.target,
+        time: l.timestamp,
+        ip: l.ip,
+      })),
+    [auditLogs],
   )
 
   const filtered = useMemo(
@@ -79,7 +82,7 @@ export function OwnerActivity() {
                     <span className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-lg', k.tone)}><k.icon className="h-4 w-4" /></span>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium text-ink">{e.message}</p>
-                      <p className="text-xs text-ink-subtle">{e.company} · {e.time}</p>
+                      <p className="text-xs text-ink-subtle">{e.detail ? `${e.detail} · ` : ''}{e.time}</p>
                     </div>
                     <Badge tone="neutral" className="hidden font-mono sm:inline-flex">{e.ip}</Badge>
                   </div>

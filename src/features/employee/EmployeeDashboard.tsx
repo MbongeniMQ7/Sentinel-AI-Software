@@ -43,6 +43,9 @@ export function EmployeeDashboard() {
   const live = useMemo(() => liveMetrics[0], [liveMetrics])
   const deviceConnected = !!live
   const calibrating = live?.status === 'CALIBRATING'
+  const lastPoint = fatigueTrend[fatigueTrend.length - 1]
+  const fatigueVal = deviceConnected && !calibrating ? Math.round(live.score) : Math.round(lastPoint?.fatigue ?? 0)
+  const riskLevel: 'low' | 'moderate' | 'high' | 'critical' = fatigueVal >= 85 ? 'critical' : fatigueVal >= 70 ? 'high' : fatigueVal >= 40 ? 'moderate' : 'low'
 
   // Poll the physical device every 5s for fresh readings.
   useEffect(() => {
@@ -59,7 +62,7 @@ export function EmployeeDashboard() {
         actions={
           <>
             <Badge tone={deviceConnected ? 'success' : 'neutral'} dot>
-              {deviceConnected ? (calibrating ? 'Device calibrating' : 'Device connected') : 'On shift · Morning'}
+              {deviceConnected ? (calibrating ? 'Device calibrating' : 'Device connected') : 'No device connected'}
             </Badge>
             <Link to="/user/monitoring">
               <Button size="sm">
@@ -73,26 +76,26 @@ export function EmployeeDashboard() {
       <div className="grid gap-5 lg:grid-cols-3">
         {/* Gauge */}
         <Card className="lg:col-span-1">
-          <CardHeader title="Fatigue Index" subtitle={deviceConnected ? 'Live from wristband' : 'Updated 1 min ago'} />
+          <CardHeader title="Fatigue Index" subtitle={deviceConnected ? 'Live from wristband' : lastPoint ? 'Latest recorded reading' : 'No device'} />
           <CardBody className="flex flex-col items-center">
-            <Gauge value={deviceConnected && !calibrating ? Math.round(live.score) : 38} label={deviceConnected ? (calibrating ? `Calibrating · ${live.calibration}s` : 'Wellness score') : 'Current reading'} />
+            <Gauge value={deviceConnected && !calibrating ? Math.round(live.score) : Math.round(lastPoint?.fatigue ?? 0)} label={deviceConnected ? (calibrating ? `Calibrating · ${live.calibration}s` : 'Wellness score') : lastPoint ? 'Latest reading' : 'No reading'} />
             <div className="mt-4 flex w-full items-center justify-between rounded-xl bg-surface-subtle p-3 text-sm">
               <span className="text-ink-muted">Status</span>
-              <RiskBadge level="low" />
+              <RiskBadge level={riskLevel} />
             </div>
           </CardBody>
         </Card>
 
         {/* Vitals */}
         <div className="grid gap-5 sm:grid-cols-2 lg:col-span-2">
-          <KpiCard label="Heart rate" value={deviceConnected && live.bpm ? `${Math.round(live.bpm)} bpm` : '74 bpm'} icon={<HeartPulse className="h-5 w-5" />} tone="danger" hint={deviceConnected ? 'Live from device' : 'Resting · normal range'} />
+          <KpiCard label="Heart rate" value={deviceConnected && live.bpm ? `${Math.round(live.bpm)} bpm` : lastPoint?.heartRate ? `${Math.round(lastPoint.heartRate)} bpm` : '—'} icon={<HeartPulse className="h-5 w-5" />} tone="danger" hint={deviceConnected ? 'Live from device' : lastPoint ? 'Latest reading' : 'Connect a device'} />
           {deviceConnected ? (
             <KpiCard label="Skin temp" value={live.temp ? `${live.temp.toFixed(1)} °C` : '—'} icon={<Thermometer className="h-5 w-5" />} tone="brand" hint={calibrating ? `Calibrating · ${live.calibration}s left` : 'Live from device'} />
           ) : (
-            <KpiCard label="Focus score" value="86%" icon={<TrendingUp className="h-5 w-5" />} tone="success" delta={5} hint="Above your weekly avg" />
+            <KpiCard label="Focus score" value={lastPoint?.focus ? `${Math.round(lastPoint.focus)}%` : '—'} icon={<TrendingUp className="h-5 w-5" />} tone="success" hint={lastPoint ? 'Latest reading' : 'Connect a device'} />
           )}
-          <KpiCard label="Hours on shift" value="5h 12m" icon={<Timer className="h-5 w-5" />} tone="brand" hint="Break due in 48 min" />
-          <KpiCard label="Sleep debt" value="0.5h" icon={<Moon className="h-5 w-5" />} tone="purple" delta={-12} invertDelta hint="Recovered overnight" />
+          <KpiCard label="Hours on shift" value="—" icon={<Timer className="h-5 w-5" />} tone="brand" hint="Connect a device" />
+          <KpiCard label="Sleep debt" value="—" icon={<Moon className="h-5 w-5" />} tone="purple" hint="Connect a device" />
         </div>
       </div>
 
@@ -159,7 +162,7 @@ export function EmployeeDashboard() {
           </span>
           <div className="flex-1">
             <p className="text-sm font-semibold text-ink">Time to move</p>
-            <p className="text-sm text-ink-muted">You've been stationary for 52 minutes. A short stretch can lower your fatigue index.</p>
+            <p className="text-sm text-ink-muted">Regular movement and short stretch breaks help lower your fatigue index.</p>
           </div>
           <Link to="/user/breaks">
             <Button variant="outline" size="sm">Take a micro-break</Button>

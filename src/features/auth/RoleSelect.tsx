@@ -73,6 +73,11 @@ export function RoleSelect() {
       <p className="mt-5 text-center text-xs text-ink-subtle">
         We'll email a 6-digit code that expires in 10 minutes. No password required.
       </p>
+      <p className="mt-3 text-center text-xs text-ink-subtle">
+        By continuing you agree to our{' '}
+        <a href="/legal/SentinelAI-Terms-and-Conditions.pdf" download className="font-medium text-brand-600 hover:underline">Terms &amp; Conditions</a>{' '}and{' '}
+        <a href="/legal/SentinelAI-Privacy-Policy.pdf" download className="font-medium text-brand-600 hover:underline">Privacy Policy</a>.
+      </p>
     </AuthLayout>
   )
 }
