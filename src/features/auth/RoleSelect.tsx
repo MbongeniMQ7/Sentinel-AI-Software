@@ -4,12 +4,20 @@ import { ArrowRight, Mail } from 'lucide-react'
 import { AuthLayout } from './AuthLayout'
 import { Button } from '@/components/ui/Button'
 import { useAuth, roleHome } from '@/lib/auth'
-import { requestOtp } from '@/lib/supabase'
+import { employeeAvatar, managerAvatar, ownerAvatar } from '@/lib/avatars'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
+function inferRole(email: string): 'employee' | 'manager' | 'owner' {
+  if (email.includes('manager') || email.includes('admin') || email.includes('priya') || email.includes('marcus')) return 'manager'
+  if (email.includes('owner') || email.includes('director') || email.includes('ceo') || email.includes('executive')) return 'owner'
+  return 'employee'
+}
+
+const roleAvatar = { employee: employeeAvatar, manager: managerAvatar, owner: ownerAvatar }
+
 export function RoleSelect() {
-  const { user, setPendingEmail } = useAuth()
+  const { user, refresh } = useAuth()
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [sending, setSending] = useState(false)
@@ -26,15 +34,20 @@ export function RoleSelect() {
     }
     setError(null)
     setSending(true)
-    try {
-      await requestOtp(value)
-      setPendingEmail(value)
-      navigate('/auth/verify')
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not send the code')
-    } finally {
-      setSending(false)
+    const role = inferRole(value)
+    const mockUser = {
+      id: 'mock-user-id',
+      name: value.split('@')[0].split('.').map((s: string) => s.charAt(0).toUpperCase() + s.slice(1)).join(' '),
+      email: value,
+      role,
+      title: role === 'manager' ? 'Shift Manager · Operations' : role === 'owner' ? 'Company Director' : 'Line Operator',
+      avatarUrl: roleAvatar[role],
+      companyId: 'comp-1',
     }
+    localStorage.setItem('sentinel_mock_user', JSON.stringify(mockUser))
+    await refresh()
+    navigate(roleHome[role])
+    setSending(false)
   }
 
   return (
