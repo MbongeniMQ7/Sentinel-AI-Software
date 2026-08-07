@@ -1,16 +1,19 @@
 import { createClient } from '@supabase/supabase-js'
 
-const url = import.meta.env.VITE_SUPABASE_URL || 'https://fohowwcyimfhtasqusys.supabase.co'
-const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_vZK_pxXB-eV_sRgnrtEaQQ_YSQYeCaG'
+const url = import.meta.env.VITE_SUPABASE_URL
+const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-// Demo mode is based on the RESOLVED endpoint, not on whether the env var is
-// present. This guarantees a real deployment (which falls back to the real URL
-// + publishable key above) always calls the live backend and actually sends
-// OTP emails, instead of silently short-circuiting into a mock session.
+if (!url || !anonKey) {
+  throw new Error(
+    'Missing required environment variables: VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY must be set. ' +
+    'Copy .env.example to .env and fill in your project credentials.'
+  )
+}
+
+// Demo mode: set VITE_SUPABASE_URL to a placeholder value (e.g. "mock") to
+// enable offline/demo operation without hitting the real backend.
 const IS_DEMO = url.includes('placeholder') || url.includes('mock') || anonKey === 'mock-anon-key'
 
-// We will not throw dynamic crashes so the entire application is fully loadable 
-// as an offline preview frontend.
 export const supabase = createClient(url, anonKey, {
   auth: {
     persistSession: true,
